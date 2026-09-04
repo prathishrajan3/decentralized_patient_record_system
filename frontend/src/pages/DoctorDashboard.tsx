@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { Search, FileText, CheckCircle2, Upload, Loader2, FileCheck } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { Search, CheckCircle2, Upload, Loader2, FileCheck } from 'lucide-react';
 import { fetchApi } from '../lib/api';
 
 interface Record {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ShieldCheck, ShieldAlert, FileText, Download, Loader2 } from 'lucide-react';
 import { fetchApi } from '../lib/api';
 

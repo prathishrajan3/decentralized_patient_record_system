@@ -1,1 +1,38 @@
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", sans-serif;
+  
+  --color-primary: #0f4c75;
+  --color-primary-light: #3282b8;
+  --color-accent: #00b4d8;
+  --color-accent-light: #90e0ef;
+  
+  --color-background-start: #f8fafc;
+  --color-background-end: #e2e8f0;
+}
+
+@layer base {
+  body {
+    @apply bg-gradient-to-br from-[--color-background-start] to-[--color-background-end] min-h-screen text-slate-800 antialiased;
+    font-family: var(--font-sans);
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    @apply bg-white/70 backdrop-blur-md border border-white/40 shadow-xl shadow-slate-200/50 rounded-2xl;
+  }
+  
+  .glass-card {
+    @apply bg-white/60 backdrop-blur-sm border border-white/50 shadow-lg shadow-slate-200/40 rounded-xl transition-all duration-300 hover:shadow-xl hover:bg-white/80;
+  }
+  
+  .btn-primary {
+    @apply bg-gradient-to-r from-[--color-primary] to-[--color-primary-light] text-white px-6 py-2 rounded-lg font-medium shadow-md transition-all duration-300 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98];
+  }
+  
+  .btn-secondary {
+    @apply bg-white/80 text-[--color-primary] border border-[--color-primary-light]/30 px-6 py-2 rounded-lg font-medium shadow-sm transition-all duration-300 hover:bg-white hover:shadow hover:border-[--color-primary-light]/50;
+  }
+}

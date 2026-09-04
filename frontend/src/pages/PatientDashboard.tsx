@@ -1,32 +1,67 @@
+import React, { useEffect, useState } from 'react';
+import { ShieldCheck, ShieldAlert, FileText, Download, Loader2 } from 'lucide-react';
+import { fetchApi } from '../lib/api';
 
-import { ShieldCheck, ShieldAlert, FileText, Download } from 'lucide-react';
+interface Record {
+  id: number;
+  file_type: string;
+  created_at: string;
+  doctor_id: number;
+  blockchain_tx_hash: string | null;
+}
+
+interface Consent {
+  id: number;
+  doctor_id: number;
+  granted_at: string;
+}
 
 export default function PatientDashboard() {
-  const mockRecords = [
-    { id: 'REC-001', date: '2026-08-15', type: 'Blood Test Results', doctor: 'Dr. Sarah Smith', status: 'Verified' },
-    { id: 'REC-002', date: '2026-07-22', type: 'Annual Physical', doctor: 'Dr. James Wilson', status: 'Verified' },
-    { id: 'REC-003', date: '2026-05-10', type: 'Prescription - Amoxicillin', doctor: 'Dr. Emily Chen', status: 'Pending Verification' },
-  ];
+  const [records, setRecords] = useState<Record[]>([]);
+  const [consents, setConsents] = useState<Consent[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const mockConsents = [
-    { doctor: 'Dr. Sarah Smith', hospital: 'City General', grantedOn: '2026-01-15', expires: '2027-01-15' },
-    { doctor: 'Dr. James Wilson', hospital: 'Westside Clinic', grantedOn: '2026-06-20', expires: '2026-12-20' },
-  ];
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [recordsData, consentsData] = await Promise.all([
+          fetchApi('/records'),
+          fetchApi('/consent/active')
+        ]);
+        setRecords(recordsData);
+        setConsents(consentsData);
+      } catch (err) {
+        console.error("Failed to fetch dashboard data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const handleRevoke = async (doctorId: number) => {
+    try {
+      await fetchApi(`/consent/revoke/${doctorId}`, { method: 'POST' });
+      setConsents(consents.filter(c => c.doctor_id !== doctorId));
+    } catch (err) {
+      alert("Failed to revoke consent");
+    }
+  };
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-[50vh]"><Loader2 className="w-8 h-8 animate-spin text-[--color-primary]" /></div>;
+  }
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold text-slate-800">Welcome, John</h2>
+          <h2 className="text-3xl font-bold text-slate-800">Welcome back</h2>
           <p className="text-slate-500 mt-1">Here is the latest overview of your health records.</p>
         </div>
-        <button className="btn-primary flex items-center gap-2">
-          <FileText className="w-4 h-4" /> Add Record
-        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Stats Cards */}
         <div className="glass-card p-6">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-blue-100 text-blue-600 rounded-lg">
@@ -34,7 +69,7 @@ export default function PatientDashboard() {
             </div>
             <div>
               <p className="text-sm font-medium text-slate-500">Total Records</p>
-              <h3 className="text-2xl font-bold text-slate-800">24</h3>
+              <h3 className="text-2xl font-bold text-slate-800">{records.length}</h3>
             </div>
           </div>
         </div>
@@ -46,7 +81,7 @@ export default function PatientDashboard() {
             </div>
             <div>
               <p className="text-sm font-medium text-slate-500">Active Consents</p>
-              <h3 className="text-2xl font-bold text-slate-800">2</h3>
+              <h3 className="text-2xl font-bold text-slate-800">{consents.length}</h3>
             </div>
           </div>
         </div>
@@ -58,36 +93,37 @@ export default function PatientDashboard() {
             </div>
             <div>
               <p className="text-sm font-medium text-slate-500">Blockchain Verifications</p>
-              <h3 className="text-2xl font-bold text-slate-800">23</h3>
+              <h3 className="text-2xl font-bold text-slate-800">
+                {records.filter(r => r.blockchain_tx_hash).length}
+              </h3>
             </div>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Records List */}
         <div className="lg:col-span-2 glass-panel p-6">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-bold text-slate-800">Recent Medical Records</h3>
-            <button className="text-sm font-medium text-[--color-primary] hover:underline">View All</button>
           </div>
           
           <div className="space-y-4">
-            {mockRecords.map((record) => (
+            {records.length === 0 && <p className="text-sm text-slate-500">No medical records found.</p>}
+            {records.map((record) => (
               <div key={record.id} className="flex items-center justify-between p-4 bg-white/50 border border-slate-100 rounded-xl hover:bg-white/80 transition-colors">
                 <div className="flex items-start gap-4">
                   <div className="mt-1">
-                    {record.status === 'Verified' ? (
+                    {record.blockchain_tx_hash ? (
                       <ShieldCheck className="w-5 h-5 text-emerald-500" />
                     ) : (
                       <ShieldAlert className="w-5 h-5 text-amber-500" />
                     )}
                   </div>
                   <div>
-                    <h4 className="font-medium text-slate-800">{record.type}</h4>
-                    <p className="text-sm text-slate-500">Added by {record.doctor} on {record.date}</p>
-                    <span className={`inline-block mt-2 px-2 py-1 text-xs font-medium rounded-full ${record.status === 'Verified' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                      {record.status}
+                    <h4 className="font-medium text-slate-800">{record.file_type}</h4>
+                    <p className="text-sm text-slate-500">Added by Dr. ID {record.doctor_id} on {new Date(record.created_at).toLocaleDateString()}</p>
+                    <span className={`inline-block mt-2 px-2 py-1 text-xs font-medium rounded-full ${record.blockchain_tx_hash ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {record.blockchain_tx_hash ? 'Verified on Sepolia' : 'Unverified'}
                     </span>
                   </div>
                 </div>
@@ -99,29 +135,26 @@ export default function PatientDashboard() {
           </div>
         </div>
 
-        {/* Active Consents */}
         <div className="glass-panel p-6">
           <h3 className="text-lg font-bold text-slate-800 mb-6">Active Consents</h3>
           <div className="space-y-4">
-            {mockConsents.map((consent, idx) => (
-              <div key={idx} className="p-4 bg-white/50 border border-slate-100 rounded-xl">
-                <h4 className="font-medium text-slate-800">{consent.doctor}</h4>
-                <p className="text-sm text-slate-500">{consent.hospital}</p>
-                <div className="mt-3 flex items-center justify-between">
-                  <span className="text-xs text-slate-500">Expires: {consent.expires}</span>
-                  <button className="text-xs font-medium text-red-600 hover:text-red-700 hover:underline">Revoke</button>
+            {consents.length === 0 && <p className="text-sm text-slate-500">No active doctor consents.</p>}
+            {consents.map((consent) => (
+              <div key={consent.id} className="p-4 bg-white/50 border border-slate-100 rounded-xl">
+                <h4 className="font-medium text-slate-800">Dr. ID: {consent.doctor_id}</h4>
+                <p className="text-xs text-slate-500 mt-1">Granted on {new Date(consent.granted_at).toLocaleDateString()}</p>
+                <div className="mt-3 flex justify-end">
+                  <button onClick={() => handleRevoke(consent.doctor_id)} className="text-xs font-medium text-red-600 hover:text-red-700 hover:underline">Revoke Access</button>
                 </div>
               </div>
             ))}
           </div>
-          <button className="w-full mt-4 btn-secondary text-sm">Manage All Permissions</button>
         </div>
       </div>
     </div>
   );
 }
 
-// Mock Activity icon since I didn't import it at the top
 function Activity(props: any) {
   return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
 }

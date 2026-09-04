@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Shield, Search, Loader2, UserPlus, CheckCircle, ShieldAlert } from 'lucide-react';
+import { Shield, Search, Loader2, CheckCircle, ShieldAlert } from 'lucide-react';
 import { fetchApi } from '../lib/api';
 
 export default function PatientConsent() {

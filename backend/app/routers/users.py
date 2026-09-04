@@ -30,8 +30,18 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     if user.role == RoleEnum.doctor and not user.license_number:
         raise HTTPException(status_code=400, detail="License number is required for doctors")
 
+    import random
+    
+    # Generate random 6 digit ID
+    while True:
+        random_id = random.randint(100000, 999999)
+        existing = db.query(User).filter(User.id == random_id).first()
+        if not existing:
+            break
+
     hashed_password = get_password_hash(user.password)
     new_user = User(
+        id=random_id,
         email=user.email,
         hashed_password=hashed_password,
         full_name=user.full_name,
@@ -79,6 +89,32 @@ async def login(request: Request, db: Session = Depends(get_db)):
     
     access_token = create_access_token(data={"sub": user.email, "role": user.role.value})
     return {"access_token": access_token, "token_type": "bearer"}
+@router.get("/me")
+def get_current_user_profile(current_user: User = Depends(get_current_user)):
+    return {
+        "id": current_user.id,
+        "email": current_user.email,
+        "full_name": current_user.full_name,
+        "role": current_user.role.value,
+        "license_number": current_user.license_number
+    }
+
+@router.get("/patients")
+def get_patients(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role != RoleEnum.doctor:
+        raise HTTPException(status_code=403, detail="Only doctors can search for patients.")
+    
+    patients = db.query(User).filter(User.role == RoleEnum.patient).all()
+    return [{"id": p.id, "email": p.email, "full_name": p.full_name} for p in patients]
+
+@router.get("/doctors")
+def get_doctors(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role != RoleEnum.patient:
+        raise HTTPException(status_code=403, detail="Only patients can search for doctors.")
+    
+    doctors = db.query(User).filter(User.role == RoleEnum.doctor).all()
+    return [{"id": d.id, "email": d.email, "full_name": d.full_name, "license_number": d.license_number} for d in doctors]
+
 @router.get("")
 def get_all_users(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     if current_user.role != RoleEnum.admin:

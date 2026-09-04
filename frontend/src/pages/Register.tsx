@@ -82,8 +82,8 @@ export default function Register() {
 
         <form onSubmit={handleRegister} className="space-y-5">
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">Email Address</label>
-            <input type="email" name="email" value={formData.email} onChange={handleChange} required className="input-field" placeholder="user@example.com" />
+            <label className="block text-sm font-semibold text-slate-700 mb-2">Email or Username</label>
+            <input type="text" name="email" value={formData.email} onChange={handleChange} required className="input-field" placeholder="user@example.com / dr_smith" />
           </div>
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-2">Full Name</label>
@@ -107,6 +107,13 @@ export default function Register() {
               </label>
             </div>
           </div>
+
+          {formData.role === 'doctor' && (
+            <div className="animate-in fade-in slide-in-from-top-4 duration-300">
+              <label className="block text-sm font-semibold text-slate-700 mb-2">Medical License Number</label>
+              <input type="text" name="license_number" value={formData.license_number} onChange={handleChange} required className="input-field" placeholder="e.g. MD1234567" />
+            </div>
+          )}
           
           <button type="submit" disabled={loading} className="w-full btn-primary mt-6 py-3 text-lg">
             {loading ? 'Creating Identity...' : 'Register'}

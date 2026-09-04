@@ -22,18 +22,23 @@ async def upload_record(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    if current_user.role != RoleEnum.doctor:
-        raise HTTPException(status_code=403, detail="Only doctors can upload records")
+    if current_user.role == RoleEnum.patient:
+        if patient_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Patients can only upload their own records")
+        assigned_doctor_id = None
+    elif current_user.role == RoleEnum.doctor:
+        # Check if doctor has consent
+        consent = db.query(Consent).filter(
+            Consent.patient_id == patient_id,
+            Consent.doctor_id == current_user.id,
+            Consent.status == "active"
+        ).first()
 
-    # Check if doctor has consent
-    consent = db.query(Consent).filter(
-        Consent.patient_id == patient_id,
-        Consent.doctor_id == current_user.id,
-        Consent.status == "active"
-    ).first()
-
-    if not consent:
-        raise HTTPException(status_code=403, detail="No active consent from this patient")
+        if not consent:
+            raise HTTPException(status_code=403, detail="No active consent from this patient")
+        assigned_doctor_id = current_user.id
+    else:
+        raise HTTPException(status_code=403, detail="Admins cannot upload records")
 
     # Read and hash original file
     file_bytes = await file.read()
@@ -58,7 +63,7 @@ async def upload_record(
     # Save to Database
     record = MedicalRecord(
         patient_id=patient_id,
-        doctor_id=current_user.id,
+        doctor_id=assigned_doctor_id,
         file_type=file_type,
         supabase_file_path=storage_path,
         record_hash=original_hash,

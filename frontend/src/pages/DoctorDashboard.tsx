@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Search, CheckCircle2, Upload, Loader2, FileCheck, Users, ShieldAlert, Clock, Stethoscope } from 'lucide-react';
+import { Search, CheckCircle2, Upload, Loader2, FileCheck, Users, ShieldAlert, Clock, Stethoscope, UserPlus } from 'lucide-react';
 import { fetchApi } from '../lib/api';
 
 interface Record {
@@ -21,10 +21,17 @@ export default function DoctorDashboard() {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [patients, setPatients] = useState<any[]>([]);
+  const [patientSearchQuery, setPatientSearchQuery] = useState('');
+
   const fetchRecords = async () => {
     try {
-      const data = await fetchApi('/records');
-      setRecords(data);
+      const [recordsData, patientsData] = await Promise.all([
+        fetchApi('/records'),
+        fetchApi('/users/patients')
+      ]);
+      setRecords(recordsData);
+      setPatients(patientsData);
     } catch (err) {
       console.error("Failed to fetch records:", err);
     } finally {
@@ -65,6 +72,15 @@ export default function DoctorDashboard() {
     }
   };
 
+  const handleRequestConsent = async (patientId: number) => {
+    try {
+      const res = await fetchApi(`/consent/request/${patientId}`, { method: 'POST' });
+      alert(res.message);
+    } catch (err: any) {
+      alert(err.message || 'Failed to request consent');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
@@ -80,6 +96,12 @@ export default function DoctorDashboard() {
     r.patient_id.toString().includes(searchQuery) || 
     r.file_type.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const filteredPatients = patients.filter(p =>
+    p.id.toString().includes(patientSearchQuery) ||
+    p.full_name.toLowerCase().includes(patientSearchQuery.toLowerCase()) ||
+    p.email.toLowerCase().includes(patientSearchQuery.toLowerCase())
+  ).slice(0, 3); // Limit to 3 for compact UI
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto pb-12 relative">
@@ -167,15 +189,52 @@ export default function DoctorDashboard() {
           </form>
         </div>
 
-        <div className="glass-panel p-6 sm:p-8 flex flex-col items-center justify-center text-center">
-          <div className="w-20 h-20 bg-emerald-50 border-2 border-emerald-100 rounded-full flex items-center justify-center mb-5 relative">
-            <div className="absolute inset-0 border border-emerald-200 rounded-full animate-ping opacity-20"></div>
-            <FileCheck className="w-10 h-10 text-emerald-600" />
+        <div className="glass-panel p-6 sm:p-8 flex flex-col relative overflow-hidden group">
+          <div className="flex items-start gap-4 mb-6">
+            <div className="w-12 h-12 bg-emerald-100/50 border border-emerald-200 rounded-xl flex items-center justify-center shrink-0">
+              <UserPlus className="w-6 h-6 text-emerald-600" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-slate-800">Request Access</h3>
+              <p className="text-sm text-slate-500 font-medium mt-1">Find patients to request access to their records.</p>
+            </div>
           </div>
-          <h3 className="text-xl font-bold text-slate-800">Consent Verification Engine</h3>
-          <p className="text-sm text-slate-500 font-medium mt-3 max-w-xs leading-relaxed">
-            Access to patient data is strictly governed by smart contracts. Patients must explicitly grant your Doctor ID access via their portal.
-          </p>
+          
+          <div className="relative mb-4">
+            <input 
+              type="text" 
+              placeholder="Search by name, email or ID..."
+              className="w-full bg-white/80 border border-slate-200 shadow-sm rounded-xl pl-11 pr-4 py-2.5 text-sm focus:outline-none focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+              value={patientSearchQuery}
+              onChange={(e) => setPatientSearchQuery(e.target.value)}
+            />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+          </div>
+
+          <div className="space-y-3 flex-1 overflow-y-auto pr-2">
+            {patientSearchQuery && filteredPatients.length === 0 && (
+              <p className="text-sm text-slate-500 text-center py-4">No patients found.</p>
+            )}
+            {patientSearchQuery && filteredPatients.map(p => (
+              <div key={p.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-white border border-slate-100 rounded-xl shadow-sm gap-3">
+                <div className="min-w-0">
+                  <p className="font-bold text-slate-800 text-sm truncate">{p.full_name}</p>
+                  <p className="text-xs text-slate-500 truncate">ID: {p.id} • {p.email}</p>
+                </div>
+                <button onClick={() => handleRequestConsent(p.id)} className="w-full sm:w-auto px-3 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-semibold rounded-lg text-xs transition-colors shrink-0 border border-emerald-200">
+                  Request Access
+                </button>
+              </div>
+            ))}
+            {!patientSearchQuery && (
+              <div className="flex flex-col items-center justify-center h-full text-center py-8">
+                <FileCheck className="w-10 h-10 text-slate-300 mb-3" />
+                <p className="text-sm text-slate-500 font-medium max-w-[200px]">
+                  Search for a patient above to request consent.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

@@ -29,7 +29,7 @@ class MedicalRecord(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     patient_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    doctor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    doctor_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     file_type = Column(String, nullable=False) # e.g., 'Blood Test', 'Prescription'
     supabase_file_path = Column(String, nullable=False) # Path in Supabase storage
     ipfs_hash = Column(String, nullable=True) # Optional IPFS hash if used
@@ -58,3 +58,12 @@ class AuditLog(Base):
     action = Column(String, nullable=False) # e.g., "VIEW_RECORD", "GRANT_CONSENT"
     resource_id = Column(String, nullable=True) # ID of record or consent
     timestamp = Column(DateTime, default=datetime.utcnow)
+
+class ConsentRequest(Base):
+    __tablename__ = "consent_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    patient_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    doctor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    status = Column(String, default="pending") # pending, approved, rejected
+    created_at = Column(DateTime, default=datetime.utcnow)

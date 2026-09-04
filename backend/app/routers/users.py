@@ -65,6 +65,7 @@ async def login(request: Request, db: Session = Depends(get_db)):
     
     username = parsed_data.get('username', [None])[0]
     password = parsed_data.get('password', [None])[0]
+    mfa_code = parsed_data.get('mfa_code', [None])[0]
     
     # Fallback to json if somehow it actually is json
     if not username and not password:
@@ -73,6 +74,7 @@ async def login(request: Request, db: Session = Depends(get_db)):
             json_data = json.loads(body_str)
             username = json_data.get('username')
             password = json_data.get('password')
+            mfa_code = json_data.get('mfa_code')
         except:
             pass
 
@@ -86,9 +88,50 @@ async def login(request: Request, db: Session = Depends(get_db)):
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+        
+    if user.mfa_secret:
+        if not mfa_code:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="MFA_REQUIRED")
+        import pyotp
+        totp = pyotp.TOTP(user.mfa_secret)
+        if not totp.verify(mfa_code):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid MFA code")
     
     access_token = create_access_token(data={"sub": user.email, "role": user.role.value})
     return {"access_token": access_token, "token_type": "bearer"}
+
+class MFAVerify(BaseModel):
+    mfa_code: str
+
+@router.post("/mfa/setup")
+def setup_mfa(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if current_user.mfa_secret:
+        raise HTTPException(status_code=400, detail="MFA already set up")
+    
+    import pyotp
+    secret = pyotp.random_base32()
+    totp = pyotp.TOTP(secret)
+    provisioning_uri = totp.provisioning_uri(name=current_user.email, issuer_name="Decentralized Patient Records")
+    
+    # Temporarily store the secret to verify later, or we just return it and wait for verification.
+    # In a real app we might store it in a temp field or Redis. We'll store it directly for MVP but mark verified only if needed.
+    # Actually, we can just save it to the DB now. If they lose it, they can reset.
+    current_user.mfa_secret = secret
+    db.commit()
+    
+    return {"secret": secret, "provisioning_uri": provisioning_uri}
+
+@router.post("/mfa/verify")
+def verify_mfa(mfa_data: MFAVerify, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not current_user.mfa_secret:
+        raise HTTPException(status_code=400, detail="MFA not set up")
+    
+    import pyotp
+    totp = pyotp.TOTP(current_user.mfa_secret)
+    if not totp.verify(mfa_data.mfa_code):
+        raise HTTPException(status_code=400, detail="Invalid MFA code")
+    
+    return {"message": "MFA verified successfully"}
 @router.get("/me")
 def get_current_user_profile(current_user: User = Depends(get_current_user)):
     return {
@@ -121,10 +164,36 @@ def get_all_users(db: Session = Depends(get_db), current_user: User = Depends(ge
         raise HTTPException(status_code=403, detail="Not authorized. Admins only.")
     
     users = db.query(User).all()
-    # Mask passwords before returning
+    # Mask passwords and secrets before returning
     for u in users:
         u.hashed_password = "*****"
+        if u.mfa_secret:
+            u.mfa_secret = "*****"
     return users
+
+@router.get("/doctors/pending")
+def get_pending_doctors(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role != RoleEnum.admin:
+        raise HTTPException(status_code=403, detail="Not authorized. Admins only.")
+        
+    doctors = db.query(User).filter(User.role == RoleEnum.doctor, User.verification_status == "pending").all()
+    return [{"id": d.id, "email": d.email, "full_name": d.full_name, "license_number": d.license_number} for d in doctors]
+
+@router.post("/{user_id}/verify")
+def verify_doctor(user_id: int, status: str = "verified", db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role != RoleEnum.admin:
+        raise HTTPException(status_code=403, detail="Not authorized. Admins only.")
+        
+    doctor = db.query(User).filter(User.id == user_id, User.role == RoleEnum.doctor).first()
+    if not doctor:
+        raise HTTPException(status_code=404, detail="Doctor not found")
+        
+    if status not in ["verified", "rejected"]:
+        raise HTTPException(status_code=400, detail="Invalid status")
+        
+    doctor.verification_status = status
+    db.commit()
+    return {"message": f"Doctor verification status updated to {status}"}
 
 @router.delete("/{user_id}")
 def delete_user(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):

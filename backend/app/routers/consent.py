@@ -80,6 +80,9 @@ def get_all_consents(db: Session = Depends(get_db), current_user: User = Depends
 def request_consent(patient_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     if current_user.role != RoleEnum.doctor:
         raise HTTPException(status_code=403, detail="Only doctors can request consent")
+        
+    if current_user.verification_status != "verified":
+        raise HTTPException(status_code=403, detail="Your doctor account must be verified by an admin before requesting consent")
 
     patient = db.query(User).filter(User.id == patient_id, User.role == RoleEnum.patient).first()
     if not patient:
@@ -170,3 +173,46 @@ def reject_request(request_id: int, db: Session = Depends(get_db), current_user:
 
     db.commit()
     return {"message": "Consent request rejected"}
+
+from pydantic import BaseModel
+
+class EmergencyAccessRequest(BaseModel):
+    patient_id: int
+    justification: str
+
+@router.post("/emergency")
+def request_emergency_access(data: EmergencyAccessRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role != RoleEnum.doctor:
+        raise HTTPException(status_code=403, detail="Only doctors can request emergency access")
+        
+    if current_user.verification_status != "verified":
+        raise HTTPException(status_code=403, detail="Doctor account must be verified")
+
+    patient = db.query(User).filter(User.id == data.patient_id, User.role == RoleEnum.patient).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+        
+    # Check if consent already exists
+    existing_consent = db.query(Consent).filter(
+        Consent.patient_id == data.patient_id,
+        Consent.doctor_id == current_user.id,
+        Consent.status == "active"
+    ).first()
+    
+    if existing_consent:
+        return {"message": "You already have active consent for this patient"}
+        
+    # Create emergency consent
+    consent = Consent(patient_id=data.patient_id, doctor_id=current_user.id)
+    db.add(consent)
+    
+    # High-priority audit log
+    audit = AuditLog(
+        user_id=current_user.id, 
+        action=f"EMERGENCY_ACCESS_GRANTED - Justification: {data.justification}", 
+        resource_id=str(data.patient_id)
+    )
+    db.add(audit)
+    db.commit()
+    
+    return {"message": "Emergency access granted. This action has been logged and the patient will be notified."}

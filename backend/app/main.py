@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from .database import engine, Base
-from .routers import users, records, consent, audit
+from .routers import users, records, consent, audit, clinical, fhir
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -38,6 +38,8 @@ app.include_router(users.router)
 app.include_router(records.router)
 app.include_router(consent.router)
 app.include_router(audit.router)
+app.include_router(clinical.router)
+app.include_router(fhir.router)
 
 @app.get("/health")
 def health_check():

@@ -18,6 +18,8 @@ class User(Base):
     full_name = Column(String, nullable=False)
     role = Column(Enum(RoleEnum), nullable=False)
     license_number = Column(String, nullable=True) # Only for doctors
+    mfa_secret = Column(String, nullable=True) # For TOTP MFA
+    verification_status = Column(String, default="pending") # pending, verified, rejected (only for doctors)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -66,4 +68,39 @@ class ConsentRequest(Base):
     patient_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     doctor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     status = Column(String, default="pending") # pending, approved, rejected
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class Prescription(Base):
+    __tablename__ = "prescriptions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    patient_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    doctor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    medication_name = Column(String, nullable=False)
+    dosage = Column(String, nullable=False)
+    frequency = Column(String, nullable=False)
+    duration = Column(String, nullable=False)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class Diagnosis(Base):
+    __tablename__ = "diagnoses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    patient_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    doctor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    condition_name = Column(String, nullable=False)
+    severity = Column(String, nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class Observation(Base):
+    __tablename__ = "observations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    patient_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    doctor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    observation_type = Column(String, nullable=False) # e.g., Blood Pressure, Heart Rate
+    value = Column(String, nullable=False)
+    unit = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

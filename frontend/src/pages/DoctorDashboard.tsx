@@ -17,12 +17,32 @@ export default function DoctorDashboard() {
   
   // Upload State
   const [uploadPatientId, setUploadPatientId] = useState('');
-  const [fileType, setFileType] = useState('Consultation Note');
+  const [entryMode, setEntryMode] = useState('File'); // File, Prescription, Diagnosis, Observation
+  const [fileType, setFileType] = useState('Consultation Note'); // For File
+  
+  // Clinical States
+  const [medicationName, setMedicationName] = useState('');
+  const [dosage, setDosage] = useState('');
+  const [frequency, setFrequency] = useState('');
+  const [duration, setDuration] = useState('');
+  const [conditionName, setConditionName] = useState('');
+  const [severity, setSeverity] = useState('');
+  const [clinicalNotes, setClinicalNotes] = useState('');
+  const [observationType, setObservationType] = useState('');
+  const [obsValue, setObsValue] = useState('');
+  const [obsUnit, setObsUnit] = useState('');
+
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [patients, setPatients] = useState<any[]>([]);
   const [patientSearchQuery, setPatientSearchQuery] = useState('');
+  
+  // Emergency Access State
+  const [showEmergencyModal, setShowEmergencyModal] = useState(false);
+  const [emergencyPatientId, setEmergencyPatientId] = useState('');
+  const [emergencyJustification, setEmergencyJustification] = useState('');
+  const [emergencyLoading, setEmergencyLoading] = useState(false);
 
   const fetchRecords = async () => {
     try {
@@ -51,19 +71,39 @@ export default function DoctorDashboard() {
     }
 
     setUploading(true);
-    const formData = new FormData();
-    formData.append('patient_id', uploadPatientId);
-    formData.append('file_type', fileType);
-    formData.append('file', fileInputRef.current.files[0]);
-
     try {
-      await fetchApi('/records', {
-        method: 'POST',
-        body: formData,
-      });
-      alert('Record encrypted and uploaded successfully to Supabase and logged on Sepolia!');
+      if (entryMode === 'File') {
+        const formData = new FormData();
+        formData.append('patient_id', uploadPatientId);
+        formData.append('file_type', fileType);
+        formData.append('file', fileInputRef.current.files[0]);
+
+        await fetchApi('/records', {
+          method: 'POST',
+          body: formData,
+        });
+        alert('Record encrypted and uploaded successfully!');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      } else if (entryMode === 'Prescription') {
+        await fetchApi('/clinical/prescriptions', {
+          method: 'POST',
+          body: JSON.stringify({ patient_id: uploadPatientId, medication_name: medicationName, dosage, frequency, duration, notes: clinicalNotes })
+        });
+        alert('Prescription saved!');
+      } else if (entryMode === 'Diagnosis') {
+        await fetchApi('/clinical/diagnoses', {
+          method: 'POST',
+          body: JSON.stringify({ patient_id: uploadPatientId, condition_name: conditionName, severity, notes: clinicalNotes })
+        });
+        alert('Diagnosis saved!');
+      } else if (entryMode === 'Observation') {
+        await fetchApi('/clinical/observations', {
+          method: 'POST',
+          body: JSON.stringify({ patient_id: uploadPatientId, observation_type: observationType, value: obsValue, unit: obsUnit })
+        });
+        alert('Observation saved!');
+      }
       setUploadPatientId('');
-      if (fileInputRef.current) fileInputRef.current.value = '';
       fetchRecords(); // Refresh the list
     } catch (err: any) {
       alert(err.message || 'Upload failed. Check if patient has granted you consent.');
@@ -78,6 +118,29 @@ export default function DoctorDashboard() {
       alert(res.message);
     } catch (err: any) {
       alert(err.message || 'Failed to request consent');
+    }
+  };
+
+  const handleEmergencyAccess = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEmergencyLoading(true);
+    try {
+      const res = await fetchApi('/consent/emergency', {
+        method: 'POST',
+        body: JSON.stringify({
+          patient_id: parseInt(emergencyPatientId),
+          justification: emergencyJustification
+        })
+      });
+      alert(res.message);
+      setShowEmergencyModal(false);
+      setEmergencyPatientId('');
+      setEmergencyJustification('');
+      fetchRecords(); // Refresh to see new records if they were granted access
+    } catch (err: any) {
+      alert(err.message || 'Failed to request emergency access');
+    } finally {
+      setEmergencyLoading(false);
     }
   };
 
@@ -117,15 +180,23 @@ export default function DoctorDashboard() {
           </div>
           <p className="text-slate-500 font-medium text-sm">Manage your authorized patients and securely upload new medical records.</p>
         </div>
-        <div className="relative w-full md:w-80">
-          <input 
-            type="text" 
-            placeholder="Search Patient ID or Record Type..."
-            className="w-full bg-white/80 border border-slate-200 shadow-sm rounded-xl pl-11 pr-4 py-3 text-sm focus:outline-none focus:ring-4 focus:ring-[--color-primary-light]/20 focus:border-[--color-primary-light] transition-all"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <Search className="w-5 h-5 text-slate-400 absolute left-3.5 top-3" />
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          <div className="relative w-full sm:w-64">
+            <input 
+              type="text" 
+              placeholder="Search Records..."
+              className="w-full bg-white/80 border border-slate-200 shadow-sm rounded-xl pl-11 pr-4 py-2.5 text-sm focus:outline-none focus:ring-4 focus:ring-[--color-primary-light]/20 focus:border-[--color-primary-light] transition-all"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <Search className="w-5 h-5 text-slate-400 absolute left-3.5 top-2.5" />
+          </div>
+          <button 
+            onClick={() => setShowEmergencyModal(true)}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 font-bold rounded-xl transition-colors shadow-sm"
+          >
+            <ShieldAlert className="w-4 h-4" /> Emergency Access
+          </button>
         </div>
       </div>
 
@@ -153,37 +224,68 @@ export default function DoctorDashboard() {
                   required
                   value={uploadPatientId}
                   onChange={e => setUploadPatientId(e.target.value)}
-                  className="input-field py-2.5"
+                  className="input-field py-2"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Record Type</label>
-                <input 
-                  type="text" 
-                  placeholder="e.g. MRI Scan" 
-                  required
-                  value={fileType}
-                  onChange={e => setFileType(e.target.value)}
-                  className="input-field py-2.5"
-                />
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Entry Type</label>
+                <select value={entryMode} onChange={e => setEntryMode(e.target.value)} className="input-field py-2">
+                  <option value="File">File Upload</option>
+                  <option value="Prescription">Prescription</option>
+                  <option value="Diagnosis">Diagnosis</option>
+                  <option value="Observation">Observation (Vitals)</option>
+                </select>
               </div>
             </div>
             
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Document</label>
-              <input 
-                type="file" 
-                required
-                ref={fileInputRef}
-                className="w-full text-sm text-slate-600 bg-white/60 border border-slate-200 rounded-xl p-1.5 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all cursor-pointer"
-              />
-            </div>
+            {entryMode === 'File' && (
+              <>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Record Type</label>
+                  <input type="text" placeholder="e.g. MRI Scan" required value={fileType} onChange={e => setFileType(e.target.value)} className="input-field py-2" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Document</label>
+                  <input type="file" required ref={fileInputRef} className="w-full text-sm text-slate-600 bg-white/60 border border-slate-200 rounded-xl p-1.5 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all cursor-pointer" />
+                </div>
+              </>
+            )}
+
+            {entryMode === 'Prescription' && (
+              <div className="space-y-3">
+                <input type="text" placeholder="Medication Name" required value={medicationName} onChange={e=>setMedicationName(e.target.value)} className="input-field py-2" />
+                <div className="grid grid-cols-2 gap-3">
+                  <input type="text" placeholder="Dosage (e.g. 50mg)" required value={dosage} onChange={e=>setDosage(e.target.value)} className="input-field py-2" />
+                  <input type="text" placeholder="Freq (e.g. 2x/day)" required value={frequency} onChange={e=>setFrequency(e.target.value)} className="input-field py-2" />
+                </div>
+                <input type="text" placeholder="Duration (e.g. 7 days)" required value={duration} onChange={e=>setDuration(e.target.value)} className="input-field py-2" />
+                <input type="text" placeholder="Notes" value={clinicalNotes} onChange={e=>setClinicalNotes(e.target.value)} className="input-field py-2" />
+              </div>
+            )}
+
+            {entryMode === 'Diagnosis' && (
+              <div className="space-y-3">
+                <input type="text" placeholder="Condition Name" required value={conditionName} onChange={e=>setConditionName(e.target.value)} className="input-field py-2" />
+                <input type="text" placeholder="Severity (Optional)" value={severity} onChange={e=>setSeverity(e.target.value)} className="input-field py-2" />
+                <input type="text" placeholder="Clinical Notes" value={clinicalNotes} onChange={e=>setClinicalNotes(e.target.value)} className="input-field py-2" />
+              </div>
+            )}
+
+            {entryMode === 'Observation' && (
+              <div className="space-y-3">
+                <input type="text" placeholder="Type (e.g. Blood Pressure)" required value={observationType} onChange={e=>setObservationType(e.target.value)} className="input-field py-2" />
+                <div className="grid grid-cols-2 gap-3">
+                  <input type="text" placeholder="Value (e.g. 120/80)" required value={obsValue} onChange={e=>setObsValue(e.target.value)} className="input-field py-2" />
+                  <input type="text" placeholder="Unit (e.g. mmHg)" value={obsUnit} onChange={e=>setObsUnit(e.target.value)} className="input-field py-2" />
+                </div>
+              </div>
+            )}
             
             <button type="submit" disabled={uploading} className="w-full btn-primary mt-4 py-3">
               {uploading ? (
-                <span className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Encrypting & Uploading...</span>
+                <span className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Saving...</span>
               ) : (
-                'Encrypt & Log to Blockchain'
+                entryMode === 'File' ? 'Encrypt & Log to Blockchain' : 'Save Clinical Data'
               )}
             </button>
           </form>
@@ -300,6 +402,54 @@ export default function DoctorDashboard() {
           </table>
         </div>
       </div>
+
+      {/* Emergency Access Modal */}
+      {showEmergencyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden relative border-t-4 border-red-500">
+            <div className="p-6 border-b border-slate-100 flex items-start gap-3 bg-red-50/30">
+              <div className="p-2 bg-red-100 text-red-600 rounded-lg shrink-0 mt-1">
+                <ShieldAlert className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-slate-800">Emergency Access</h3>
+                <p className="text-sm text-slate-500 mt-1">Bypass standard consent in critical situations. All actions are heavily audited and patients are notified immediately.</p>
+              </div>
+            </div>
+            <form onSubmit={handleEmergencyAccess} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Patient ID</label>
+                <input 
+                  type="number" 
+                  required
+                  placeholder="e.g. 1"
+                  className="input-field"
+                  value={emergencyPatientId}
+                  onChange={e => setEmergencyPatientId(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Clinical Justification</label>
+                <textarea 
+                  required
+                  placeholder="Describe the medical emergency..."
+                  className="input-field min-h-[100px] resize-y"
+                  value={emergencyJustification}
+                  onChange={e => setEmergencyJustification(e.target.value)}
+                ></textarea>
+              </div>
+              <div className="pt-2 flex gap-3">
+                <button type="button" onClick={() => setShowEmergencyModal(false)} className="flex-1 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200">
+                  Cancel
+                </button>
+                <button type="submit" disabled={emergencyLoading} className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-sm transition-colors flex items-center justify-center">
+                  {emergencyLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Confirm Access'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

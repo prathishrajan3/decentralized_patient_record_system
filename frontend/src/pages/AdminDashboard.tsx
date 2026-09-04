@@ -7,6 +7,7 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState<any[]>([]);
   const [records, setRecords] = useState<any[]>([]);
   const [consents, setConsents] = useState<any[]>([]);
+  const [pendingDoctors, setPendingDoctors] = useState<any[]>([]);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('users');
   const navigate = useNavigate();
@@ -17,14 +18,16 @@ export default function AdminDashboard() {
 
   const loadData = async () => {
     try {
-      const [usersData, recordsData, consentsData] = await Promise.all([
+      const [usersData, recordsData, consentsData, pendingDocsData] = await Promise.all([
         fetchApi('/users'),
         fetchApi('/records'),
-        fetchApi('/consent')
+        fetchApi('/consent'),
+        fetchApi('/users/doctors/pending')
       ]);
       setUsers(usersData);
       setRecords(recordsData);
       setConsents(consentsData);
+      setPendingDoctors(pendingDocsData);
     } catch (err: any) {
       setError(err.message || 'Failed to load admin data');
       if (err.message.includes('401')) {
@@ -48,6 +51,15 @@ export default function AdminDashboard() {
       loadData();
     } catch (err: any) {
       setError(err.message || 'Failed to delete user');
+    }
+  };
+
+  const handleVerifyDoctor = async (userId: number, status: string) => {
+    try {
+      await fetchApi(`/users/${userId}/verify?status=${status}`, { method: 'POST' });
+      loadData();
+    } catch (err: any) {
+      setError(err.message || 'Failed to update verification status');
     }
   };
 
@@ -94,6 +106,12 @@ export default function AdminDashboard() {
           className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all ${activeTab === 'consents' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
         >
           <CheckCircle className="w-5 h-5" /> Consents ({consents.length})
+        </button>
+        <button 
+          onClick={() => setActiveTab('verification')} 
+          className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all ${activeTab === 'verification' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+        >
+          <ShieldAlert className="w-5 h-5" /> Pending Doctors ({pendingDoctors.length})
         </button>
       </div>
 
@@ -199,6 +217,55 @@ export default function AdminDashboard() {
                     <td className="py-3 px-4 text-slate-500 text-sm">{new Date(c.granted_at).toLocaleDateString()}</td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {activeTab === 'verification' && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-100">
+                  <th className="py-3 px-4 text-slate-500 font-semibold text-sm">Doctor ID</th>
+                  <th className="py-3 px-4 text-slate-500 font-semibold text-sm">Email</th>
+                  <th className="py-3 px-4 text-slate-500 font-semibold text-sm">Full Name</th>
+                  <th className="py-3 px-4 text-slate-500 font-semibold text-sm">License No.</th>
+                  <th className="py-3 px-4 text-slate-500 font-semibold text-sm text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingDoctors.map(d => (
+                  <tr key={d.id} className="border-b border-slate-50 hover:bg-slate-50">
+                    <td className="py-3 px-4 text-slate-600">#{d.id}</td>
+                    <td className="py-3 px-4 font-medium text-slate-800">{d.email}</td>
+                    <td className="py-3 px-4 text-slate-600">{d.full_name}</td>
+                    <td className="py-3 px-4 text-slate-800 font-semibold">{d.license_number}</td>
+                    <td className="py-3 px-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => handleVerifyDoctor(d.id, 'verified')}
+                          className="px-3 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-semibold rounded-lg text-xs transition-colors"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleVerifyDoctor(d.id, 'rejected')}
+                          className="px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 font-semibold rounded-lg text-xs transition-colors"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {pendingDoctors.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-12 text-center text-slate-500">
+                      No pending doctor verifications.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

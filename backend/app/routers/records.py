@@ -27,6 +27,8 @@ async def upload_record(
             raise HTTPException(status_code=403, detail="Patients can only upload their own records")
         assigned_doctor_id = None
     elif current_user.role == RoleEnum.doctor:
+        if current_user.verification_status != "verified":
+            raise HTTPException(status_code=403, detail="Your doctor account must be verified by an admin before uploading records")
         # Check if doctor has consent
         consent = db.query(Consent).filter(
             Consent.patient_id == patient_id,
@@ -100,3 +102,52 @@ def get_records(db: Session = Depends(get_db), current_user: User = Depends(get_
         patient_ids = [c.patient_id for c in consents]
         records = db.query(MedicalRecord).filter(MedicalRecord.patient_id.in_(patient_ids)).all()
         return records
+
+@router.get("/export")
+def export_patient_records(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role != RoleEnum.patient:
+        raise HTTPException(status_code=403, detail="Only patients can export their full history")
+        
+    records = db.query(MedicalRecord).filter(MedicalRecord.patient_id == current_user.id).all()
+    consents = db.query(Consent).filter(Consent.patient_id == current_user.id).all()
+    audit_logs = db.query(AuditLog).filter(AuditLog.user_id == current_user.id).all()
+    
+    # We would also get clinical data but it's handled in clinical router. 
+    # For a full export, we can just dump what we have here.
+    
+    db.add(AuditLog(user_id=current_user.id, action="EXPORT_FULL_HISTORY"))
+    db.commit()
+    
+    return {
+        "user_profile": {
+            "id": current_user.id,
+            "email": current_user.email,
+            "full_name": current_user.full_name
+        },
+        "medical_records": [
+            {
+                "id": r.id,
+                "file_type": r.file_type,
+                "created_at": r.created_at,
+                "doctor_id": r.doctor_id,
+                "blockchain_tx_hash": r.blockchain_tx_hash
+            } for r in records
+        ],
+        "consents": [
+            {
+                "id": c.id,
+                "doctor_id": c.doctor_id,
+                "status": c.status,
+                "granted_at": c.granted_at,
+                "revoked_at": c.revoked_at
+            } for c in consents
+        ],
+        "audit_logs": [
+            {
+                "id": a.id,
+                "action": a.action,
+                "timestamp": a.timestamp,
+                "resource_id": a.resource_id
+            } for a in audit_logs
+        ]
+    }

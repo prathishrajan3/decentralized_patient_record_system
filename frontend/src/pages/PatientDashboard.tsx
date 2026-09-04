@@ -27,6 +27,7 @@ export default function PatientDashboard() {
   const [records, setRecords] = useState<Record[]>([]);
   const [consents, setConsents] = useState<Consent[]>([]);
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
+  const [clinicalData, setClinicalData] = useState<any>({ prescriptions: [], diagnoses: [], observations: [] });
   const [loading, setLoading] = useState(true);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -39,14 +40,16 @@ export default function PatientDashboard() {
       try {
         const userData = await fetchApi('/users/me');
         setUser(userData);
-        const [recordsData, consentsData, requestsData] = await Promise.all([
+        const [recordsData, consentsData, requestsData, clinData] = await Promise.all([
           fetchApi('/records'),
           fetchApi('/consent/active'),
-          fetchApi('/consent/requests/pending')
+          fetchApi('/consent/requests/pending'),
+          fetchApi('/clinical/patient-data').catch(() => ({ prescriptions: [], diagnoses: [], observations: [] }))
         ]);
         setRecords(recordsData);
         setConsents(consentsData);
         setPendingRequests(requestsData);
+        setClinicalData(clinData);
       } catch (err) {
         console.error("Failed to fetch dashboard data:", err);
       } finally {
@@ -133,9 +136,51 @@ export default function PatientDashboard() {
           <h2 className="text-3xl font-extrabold text-slate-800 tracking-tight">Welcome back</h2>
           <p className="text-slate-500 mt-1 font-medium text-sm">Here is the latest overview of your health records.</p>
         </div>
-        <button onClick={() => setIsUploadModalOpen(true)} className="btn-primary flex items-center justify-center gap-2 py-2.5 px-5 shadow-sm">
-          <Upload className="w-5 h-5" /> Upload Record
-        </button>
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          <button 
+            onClick={async () => {
+              try {
+                const bundle = await fetchApi(`/fhir/v4/Observation?patient=${user.id}`);
+                const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `fhir_observations_${user.id}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+              } catch (e: any) {
+                alert("Failed to export FHIR data: " + e.message);
+              }
+            }}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300 font-semibold rounded-xl transition-colors shadow-sm"
+          >
+            <Download className="w-5 h-5" /> Export FHIR
+          </button>
+          <button 
+            onClick={async () => {
+              try {
+                const data = await fetchApi('/records/export');
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `full_history_${user.id}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+              } catch (e: any) {
+                alert("Failed to export history: " + e.message);
+              }
+            }}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 font-semibold rounded-xl transition-colors shadow-sm"
+          >
+            <Download className="w-5 h-5" /> Export Full History
+          </button>
+          <button onClick={() => setIsUploadModalOpen(true)} className="w-full sm:w-auto btn-primary flex items-center justify-center gap-2 py-2.5 px-5 shadow-sm">
+            <Upload className="w-5 h-5" /> Upload Record
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -220,6 +265,59 @@ export default function PatientDashboard() {
                 </button>
               </div>
             ))}
+          </div>
+
+          <div className="mt-8 border-t border-slate-200/50 pt-8">
+            <h3 className="text-xl font-bold text-slate-800 mb-6">Clinical Data (Structured)</h3>
+            
+            <div className="space-y-6">
+              {/* Prescriptions */}
+              <div>
+                <h4 className="font-semibold text-slate-700 mb-3 flex items-center gap-2"><Activity className="w-4 h-4 text-blue-500" /> Prescriptions</h4>
+                {clinicalData.prescriptions?.length === 0 ? <p className="text-sm text-slate-500">No prescriptions found.</p> : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {clinicalData.prescriptions?.map((p: any) => (
+                      <div key={p.id} className="p-4 bg-blue-50/50 border border-blue-100 rounded-xl">
+                        <p className="font-bold text-slate-800">{p.medication_name}</p>
+                        <p className="text-sm text-slate-600 mt-1">{p.dosage} - {p.frequency} for {p.duration}</p>
+                        {p.notes && <p className="text-xs text-slate-500 mt-2 border-t border-blue-200/50 pt-2">{p.notes}</p>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Diagnoses */}
+              <div>
+                <h4 className="font-semibold text-slate-700 mb-3 flex items-center gap-2"><FileHeart className="w-4 h-4 text-emerald-500" /> Diagnoses</h4>
+                {clinicalData.diagnoses?.length === 0 ? <p className="text-sm text-slate-500">No diagnoses found.</p> : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {clinicalData.diagnoses?.map((d: any) => (
+                      <div key={d.id} className="p-4 bg-emerald-50/50 border border-emerald-100 rounded-xl">
+                        <p className="font-bold text-slate-800">{d.condition_name}</p>
+                        {d.severity && <span className="inline-block mt-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded">{d.severity}</span>}
+                        {d.notes && <p className="text-xs text-slate-500 mt-2 border-t border-emerald-200/50 pt-2">{d.notes}</p>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Observations */}
+              <div>
+                <h4 className="font-semibold text-slate-700 mb-3 flex items-center gap-2"><Activity className="w-4 h-4 text-purple-500" /> Vitals & Observations</h4>
+                {clinicalData.observations?.length === 0 ? <p className="text-sm text-slate-500">No observations found.</p> : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    {clinicalData.observations?.map((o: any) => (
+                      <div key={o.id} className="p-3 bg-purple-50/50 border border-purple-100 rounded-xl text-center">
+                        <p className="text-xs text-slate-500 uppercase font-semibold">{o.observation_type}</p>
+                        <p className="font-bold text-slate-800 text-lg mt-1">{o.value} <span className="text-xs font-normal text-slate-500">{o.unit}</span></p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
@@ -43,10 +43,34 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     db.refresh(new_user)
     return {"message": "User created successfully", "user_id": new_user.id}
 
-@router.post("/login", response_model=Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == form_data.username).first()
-    if not user or not verify_password(form_data.password, user.hashed_password):
+@router.post("/login")
+async def login(request: Request, db: Session = Depends(get_db)):
+    # The deployed frontend has a bug where it sends url-encoded data but sets Content-Type to application/json
+    # We must manually parse the body as a string and extract the fields
+    body_bytes = await request.body()
+    body_str = body_bytes.decode('utf-8')
+    
+    import urllib.parse
+    parsed_data = urllib.parse.parse_qs(body_str)
+    
+    username = parsed_data.get('username', [None])[0]
+    password = parsed_data.get('password', [None])[0]
+    
+    # Fallback to json if somehow it actually is json
+    if not username and not password:
+        try:
+            import json
+            json_data = json.loads(body_str)
+            username = json_data.get('username')
+            password = json_data.get('password')
+        except:
+            pass
+
+    if not username or not password:
+        raise HTTPException(status_code=400, detail="Missing username or password")
+
+    user = db.query(User).filter(User.email == username).first()
+    if not user or not verify_password(password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",

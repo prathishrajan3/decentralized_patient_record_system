@@ -2,7 +2,9 @@
 
 @theme {
   --font-sans: "Inter", sans-serif;
-  
+}
+
+:root {
   --color-primary: #1e3a8a;       /* Deep Blue */
   --color-primary-light: #3b82f6; /* Bright Blue */
   --color-accent: #0ea5e9;        /* Sky Blue */

@@ -33,7 +33,9 @@ export default function Login() {
       // Decode JWT slightly to find role for routing
       const payload = JSON.parse(atob(data.access_token.split('.')[1]));
       
-      if (payload.role === 'doctor') {
+      if (payload.role === 'admin') {
+        navigate('/admin');
+      } else if (payload.role === 'doctor') {
         navigate('/doctor');
       } else {
         navigate('/patient');

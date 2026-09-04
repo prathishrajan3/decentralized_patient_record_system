@@ -77,7 +77,11 @@ async def upload_record(
 
 @router.get("")
 def get_records(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    if current_user.role == RoleEnum.patient:
+    if current_user.role == RoleEnum.admin:
+        records = db.query(MedicalRecord).all()
+        return records
+        
+    elif current_user.role == RoleEnum.patient:
         records = db.query(MedicalRecord).filter(MedicalRecord.patient_id == current_user.id).all()
         # Audit log
         audit = AuditLog(user_id=current_user.id, action="VIEW_OWN_RECORDS")

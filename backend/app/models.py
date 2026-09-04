@@ -7,6 +7,7 @@ import enum
 class RoleEnum(str, enum.Enum):
     patient = "patient"
     doctor = "doctor"
+    admin = "admin"
 
 class User(Base):
     __tablename__ = "users"

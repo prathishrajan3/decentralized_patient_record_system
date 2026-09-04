@@ -68,3 +68,10 @@ def get_active_consents(db: Session = Depends(get_db), current_user: User = Depe
         Consent.status == "active"
     ).all()
     return consents
+
+@router.get("")
+def get_all_consents(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role != RoleEnum.admin:
+        raise HTTPException(status_code=403, detail="Not authorized. Admins only.")
+    
+    return db.query(Consent).all()

@@ -5,8 +5,8 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
   
   const headers = new Headers(options.headers || {});
   
-  // Only set Content-Type if it's not FormData (browser sets boundary for FormData)
-  if (!(options.body instanceof FormData)) {
+  // Only set Content-Type if it's not FormData and not already set
+  if (!(options.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
 
@@ -23,7 +23,11 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
     let errorMessage = 'An error occurred';
     try {
       const errorData = await response.json();
-      errorMessage = errorData.detail || errorData.message || errorMessage;
+      if (Array.isArray(errorData.detail)) {
+        errorMessage = errorData.detail.map((err: any) => err.msg).join(', ');
+      } else {
+        errorMessage = errorData.detail || errorData.message || errorMessage;
+      }
     } catch {
       // Ignore JSON parse errors
     }

@@ -10,6 +10,15 @@ class StorageService:
             raise ValueError("Supabase credentials not fully configured.")
         self.client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
         self.bucket_name = "medical-records"
+        
+        # Ensure bucket exists
+        try:
+            buckets = self.client.storage.list_buckets()
+            if not any(b.name == self.bucket_name for b in buckets):
+                self.client.storage.create_bucket(self.bucket_name, {"public": False})
+                print(f"Created Supabase bucket: {self.bucket_name}")
+        except Exception as e:
+            print(f"Failed to check/create bucket: {e}")
 
     def upload_file(self, file_path: str, file_bytes: bytes) -> str:
         """

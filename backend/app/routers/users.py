@@ -79,32 +79,6 @@ async def login(request: Request, db: Session = Depends(get_db)):
     
     access_token = create_access_token(data={"sub": user.email, "role": user.role.value})
     return {"access_token": access_token, "token_type": "bearer"}
-
-@router.post("/init_admin")
-def init_admin(db: Session = Depends(get_db)):
-    # Attempt to alter the Postgres ENUM type to support admin
-    try:
-        from sqlalchemy import text
-        db.execute(text("ALTER TYPE roleenum ADD VALUE IF NOT EXISTS 'admin'"))
-        db.commit()
-    except Exception:
-        db.rollback()
-        pass
-        
-    admin_user = db.query(User).filter(User.email == "admin").first()
-    if not admin_user:
-        hashed = get_password_hash("Qwerty123456")
-        admin_user = User(
-            email="admin",
-            hashed_password=hashed,
-            full_name="System Administrator",
-            role=RoleEnum.admin
-        )
-        db.add(admin_user)
-        db.commit()
-        return {"message": "Admin user securely created."}
-    return {"message": "Admin user already exists."}
-
 @router.get("")
 def get_all_users(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     if current_user.role != RoleEnum.admin:

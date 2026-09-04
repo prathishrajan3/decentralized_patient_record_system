@@ -4,13 +4,19 @@ import { fetchApi } from '../lib/api';
 
 export default function Register() {
   const navigate = useNavigate();
-  const [role, setRole] = useState<'patient' | 'doctor'>('patient');
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [license, setLicense] = useState('');
+  const [formData, setFormData] = useState({
+    email: '',
+    full_name: '',
+    password: '',
+    role: 'patient',
+    license_number: ''
+  });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,28 +27,28 @@ export default function Register() {
       await fetchApi('/users/register', {
         method: 'POST',
         body: JSON.stringify({
-          email,
-          password,
-          full_name: fullName,
-          role,
-          license_number: role === 'doctor' ? license : undefined
+          email: formData.email,
+          password: formData.password,
+          full_name: formData.full_name,
+          role: formData.role,
+          license_number: formData.role === 'doctor' ? formData.license_number : undefined
         })
       });
 
       // Automatically login after successful registration
-      const formData = new URLSearchParams();
-      formData.append('username', email);
-      formData.append('password', password);
+      const loginData = new URLSearchParams();
+      loginData.append('username', formData.email);
+      loginData.append('password', formData.password);
 
       const data = await fetchApi('/users/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: formData
+        body: loginData
       });
 
       localStorage.setItem('access_token', data.access_token);
       
-      if (role === 'doctor') {
+      if (formData.role === 'doctor') {
         navigate('/doctor');
       } else {
         navigate('/patient');

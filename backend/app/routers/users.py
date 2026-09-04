@@ -89,3 +89,26 @@ def get_all_users(db: Session = Depends(get_db), current_user: User = Depends(ge
     for u in users:
         u.hashed_password = "*****"
     return users
+
+@router.delete("/{user_id}")
+def delete_user(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role != RoleEnum.admin:
+        raise HTTPException(status_code=403, detail="Not authorized. Admins only.")
+    
+    user_to_delete = db.query(User).filter(User.id == user_id).first()
+    if not user_to_delete:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    if user_to_delete.role == RoleEnum.admin:
+        raise HTTPException(status_code=400, detail="Cannot delete an admin user")
+
+    from ..models import MedicalRecord, Consent, AuditLog
+    
+    # Manually delete dependent records to avoid Foreign Key violations
+    db.query(AuditLog).filter(AuditLog.user_id == user_id).delete()
+    db.query(Consent).filter((Consent.patient_id == user_id) | (Consent.doctor_id == user_id)).delete()
+    db.query(MedicalRecord).filter((MedicalRecord.patient_id == user_id) | (MedicalRecord.doctor_id == user_id)).delete()
+    db.delete(user_to_delete)
+    
+    db.commit()
+    return {"message": "User and all associated data successfully deleted"}

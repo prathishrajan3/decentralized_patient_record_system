@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldAlert, Users, FileText, CheckCircle, LogOut } from 'lucide-react';
+import { ShieldAlert, Users, FileText, CheckCircle, LogOut, Trash2 } from 'lucide-react';
 import { fetchApi } from '../lib/api';
 
 export default function AdminDashboard() {
@@ -36,6 +36,19 @@ export default function AdminDashboard() {
   const handleLogout = () => {
     localStorage.removeItem('access_token');
     navigate('/login');
+  };
+
+  const handleDeleteUser = async (userId: number) => {
+    if (!window.confirm('Are you sure you want to delete this user and all associated records? This action cannot be undone.')) {
+      return;
+    }
+    try {
+      await fetchApi(`/users/${userId}`, { method: 'DELETE' });
+      // Reload data to reflect deletion across all tabs
+      loadData();
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete user');
+    }
   };
 
   return (
@@ -95,6 +108,7 @@ export default function AdminDashboard() {
                   <th className="py-3 px-4 text-slate-500 font-semibold text-sm">Full Name</th>
                   <th className="py-3 px-4 text-slate-500 font-semibold text-sm">Role</th>
                   <th className="py-3 px-4 text-slate-500 font-semibold text-sm">License No.</th>
+                  <th className="py-3 px-4 text-slate-500 font-semibold text-sm text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -112,6 +126,17 @@ export default function AdminDashboard() {
                       </span>
                     </td>
                     <td className="py-3 px-4 text-slate-500 text-sm">{u.license_number || '-'}</td>
+                    <td className="py-3 px-4 text-right">
+                      {u.role !== 'admin' && (
+                        <button
+                          onClick={() => handleDeleteUser(u.id)}
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-colors"
+                          title="Delete User"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

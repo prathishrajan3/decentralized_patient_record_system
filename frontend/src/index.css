@@ -3,12 +3,12 @@
 @theme {
   --font-sans: "Inter", sans-serif;
   
-  --color-primary: #0f4c75;
-  --color-primary-light: #3282b8;
-  --color-accent: #00b4d8;
-  --color-accent-light: #90e0ef;
+  --color-primary: #1e3a8a;       /* Deep Blue */
+  --color-primary-light: #3b82f6; /* Bright Blue */
+  --color-accent: #0ea5e9;        /* Sky Blue */
+  --color-accent-light: #7dd3fc;
   
-  --color-background-start: #f8fafc;
+  --color-background-start: #f1f5f9;
   --color-background-end: #e2e8f0;
 }
 
@@ -17,22 +17,41 @@
     @apply bg-gradient-to-br from-[--color-background-start] to-[--color-background-end] min-h-screen text-slate-800 antialiased;
     font-family: var(--font-sans);
   }
+  
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-400;
+  }
 }
 
 @layer utilities {
   .glass-panel {
-    @apply bg-white/70 backdrop-blur-md border border-white/40 shadow-xl shadow-slate-200/50 rounded-2xl;
+    @apply bg-white/70 backdrop-blur-xl border border-white/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl;
   }
   
   .glass-card {
-    @apply bg-white/60 backdrop-blur-sm border border-white/50 shadow-lg shadow-slate-200/40 rounded-xl transition-all duration-300 hover:shadow-xl hover:bg-white/80;
+    @apply bg-white/60 backdrop-blur-md border border-white/50 shadow-sm shadow-slate-200/50 rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-slate-300/40 hover:-translate-y-1 hover:bg-white/80;
   }
   
   .btn-primary {
-    @apply bg-gradient-to-r from-[--color-primary] to-[--color-primary-light] text-white px-6 py-2 rounded-lg font-medium shadow-md transition-all duration-300 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98];
+    @apply bg-gradient-to-r from-[--color-primary] to-[--color-primary-light] text-white px-6 py-2 rounded-xl font-medium shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5 active:scale-[0.98] active:translate-y-0 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none;
   }
   
   .btn-secondary {
-    @apply bg-white/80 text-[--color-primary] border border-[--color-primary-light]/30 px-6 py-2 rounded-lg font-medium shadow-sm transition-all duration-300 hover:bg-white hover:shadow hover:border-[--color-primary-light]/50;
+    @apply bg-white text-[--color-primary] border-2 border-[--color-primary-light]/20 px-6 py-2 rounded-xl font-medium shadow-sm transition-all duration-300 hover:bg-slate-50 hover:border-[--color-primary-light]/50 hover:-translate-y-0.5 active:scale-[0.98] active:translate-y-0;
+  }
+  
+  .input-field {
+    @apply w-full bg-white/80 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-4 focus:ring-[--color-primary-light]/20 focus:border-[--color-primary-light] transition-all;
   }
 }

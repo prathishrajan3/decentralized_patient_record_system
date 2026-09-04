@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ShieldCheck, ShieldAlert, FileText, Download, Loader2 } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, FileText, Download, Loader2, Activity, User, FileHeart } from 'lucide-react';
 import { fetchApi } from '../lib/api';
 
 interface Record {
@@ -49,51 +49,60 @@ export default function PatientDashboard() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center min-h-[50vh]"><Loader2 className="w-8 h-8 animate-spin text-[--color-primary]" /></div>;
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+        <div className="w-16 h-16 bg-white/50 rounded-2xl flex items-center justify-center shadow-sm">
+          <Loader2 className="w-8 h-8 animate-spin text-[--color-primary]" />
+        </div>
+        <p className="text-slate-500 font-medium">Loading your health portal...</p>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-8 max-w-5xl mx-auto pb-12 relative">
+      <div className="absolute top-0 right-0 w-64 h-64 bg-blue-400/10 rounded-full blur-3xl -z-10 pointer-events-none"></div>
+      
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold text-slate-800">Welcome back</h2>
-          <p className="text-slate-500 mt-1">Here is the latest overview of your health records.</p>
+          <h2 className="text-3xl font-extrabold text-slate-800 tracking-tight">Welcome back</h2>
+          <p className="text-slate-500 mt-1 font-medium text-sm">Here is the latest overview of your health records.</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="glass-card p-6">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-blue-100 text-blue-600 rounded-lg">
-              <FileText className="w-6 h-6" />
+            <div className="p-3.5 bg-blue-50 text-blue-600 rounded-xl shadow-inner border border-blue-100">
+              <FileHeart className="w-7 h-7" />
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-500">Total Records</p>
-              <h3 className="text-2xl font-bold text-slate-800">{records.length}</h3>
+              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Total Records</p>
+              <h3 className="text-3xl font-extrabold text-slate-800 tracking-tight mt-0.5">{records.length}</h3>
             </div>
           </div>
         </div>
         
         <div className="glass-card p-6">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-emerald-100 text-emerald-600 rounded-lg">
-              <ShieldCheck className="w-6 h-6" />
+            <div className="p-3.5 bg-emerald-50 text-emerald-600 rounded-xl shadow-inner border border-emerald-100">
+              <User className="w-7 h-7" />
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-500">Active Consents</p>
-              <h3 className="text-2xl font-bold text-slate-800">{consents.length}</h3>
+              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Active Consents</p>
+              <h3 className="text-3xl font-extrabold text-slate-800 tracking-tight mt-0.5">{consents.length}</h3>
             </div>
           </div>
         </div>
         
         <div className="glass-card p-6">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-indigo-100 text-indigo-600 rounded-lg">
-              <Activity className="w-6 h-6" />
+            <div className="p-3.5 bg-indigo-50 text-indigo-600 rounded-xl shadow-inner border border-indigo-100">
+              <Activity className="w-7 h-7" />
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-500">Blockchain Verifications</p>
-              <h3 className="text-2xl font-bold text-slate-800">
+              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Verifications</p>
+              <h3 className="text-3xl font-extrabold text-slate-800 tracking-tight mt-0.5">
                 {records.filter(r => r.blockchain_tx_hash).length}
               </h3>
             </div>
@@ -102,49 +111,75 @@ export default function PatientDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 glass-panel p-6">
+        <div className="lg:col-span-2 glass-panel p-6 sm:p-8">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-bold text-slate-800">Recent Medical Records</h3>
+            <h3 className="text-xl font-bold text-slate-800">Recent Medical Records</h3>
+            <button className="text-sm font-semibold text-[--color-primary-light] hover:text-[--color-primary] transition-colors">View All</button>
           </div>
           
           <div className="space-y-4">
-            {records.length === 0 && <p className="text-sm text-slate-500">No medical records found.</p>}
+            {records.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
+                  <FileText className="w-8 h-8 text-slate-300" />
+                </div>
+                <h4 className="text-slate-700 font-semibold mb-1">No medical records yet</h4>
+                <p className="text-sm text-slate-500 max-w-sm">When doctors upload your health records or test results, they will securely appear here.</p>
+              </div>
+            )}
+            
             {records.map((record) => (
-              <div key={record.id} className="flex items-center justify-between p-4 bg-white/50 border border-slate-100 rounded-xl hover:bg-white/80 transition-colors">
-                <div className="flex items-start gap-4">
-                  <div className="mt-1">
+              <div key={record.id} className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white/60 hover:bg-white border border-slate-200/60 rounded-xl transition-all shadow-sm hover:shadow-md">
+                <div className="flex items-start gap-4 mb-4 sm:mb-0">
+                  <div className="mt-1 p-2 bg-slate-50 rounded-lg border border-slate-100">
                     {record.blockchain_tx_hash ? (
-                      <ShieldCheck className="w-5 h-5 text-emerald-500" />
+                      <ShieldCheck className="w-6 h-6 text-emerald-500" />
                     ) : (
-                      <ShieldAlert className="w-5 h-5 text-amber-500" />
+                      <ShieldAlert className="w-6 h-6 text-amber-500" />
                     )}
                   </div>
                   <div>
-                    <h4 className="font-medium text-slate-800">{record.file_type}</h4>
-                    <p className="text-sm text-slate-500">Added by Dr. ID {record.doctor_id} on {new Date(record.created_at).toLocaleDateString()}</p>
-                    <span className={`inline-block mt-2 px-2 py-1 text-xs font-medium rounded-full ${record.blockchain_tx_hash ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                    <h4 className="font-semibold text-slate-800">{record.file_type}</h4>
+                    <p className="text-sm text-slate-500 font-medium">Added by Dr. ID {record.doctor_id} • {new Date(record.created_at).toLocaleDateString()}</p>
+                    <span className={`inline-flex items-center gap-1.5 mt-2.5 px-2.5 py-1 text-xs font-bold rounded-md ${record.blockchain_tx_hash ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60' : 'bg-amber-50 text-amber-700 border border-amber-200/60'}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${record.blockchain_tx_hash ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
                       {record.blockchain_tx_hash ? 'Verified on Sepolia' : 'Unverified'}
                     </span>
                   </div>
                 </div>
-                <button className="p-2 text-slate-400 hover:text-[--color-primary] hover:bg-blue-50 rounded-lg transition-colors">
-                  <Download className="w-5 h-5" />
+                <button className="flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:text-[--color-primary] hover:border-[--color-primary-light]/30 hover:bg-blue-50 transition-all shadow-sm">
+                  <Download className="w-4 h-4" /> Download
                 </button>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="glass-panel p-6">
-          <h3 className="text-lg font-bold text-slate-800 mb-6">Active Consents</h3>
+        <div className="glass-panel p-6 sm:p-8">
+          <h3 className="text-xl font-bold text-slate-800 mb-6">Active Consents</h3>
           <div className="space-y-4">
-            {consents.length === 0 && <p className="text-sm text-slate-500">No active doctor consents.</p>}
+            {consents.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-10 px-4 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                <ShieldAlert className="w-10 h-10 text-slate-300 mb-3" />
+                <h4 className="text-slate-700 font-semibold mb-1">No active consents</h4>
+                <p className="text-xs text-slate-500">You haven't granted any doctor access to your records yet.</p>
+              </div>
+            )}
+            
             {consents.map((consent) => (
-              <div key={consent.id} className="p-4 bg-white/50 border border-slate-100 rounded-xl">
-                <h4 className="font-medium text-slate-800">Dr. ID: {consent.doctor_id}</h4>
-                <p className="text-xs text-slate-500 mt-1">Granted on {new Date(consent.granted_at).toLocaleDateString()}</p>
-                <div className="mt-3 flex justify-end">
-                  <button onClick={() => handleRevoke(consent.doctor_id)} className="text-xs font-medium text-red-600 hover:text-red-700 hover:underline">Revoke Access</button>
+              <div key={consent.id} className="p-5 bg-white/60 border border-slate-200/60 rounded-xl shadow-sm hover:shadow-md transition-all">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-8 h-8 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs">
+                    DR
+                  </div>
+                  <h4 className="font-bold text-slate-800">Doctor #{consent.doctor_id}</h4>
+                </div>
+                <p className="text-xs font-medium text-slate-500 ml-11">Granted on {new Date(consent.granted_at).toLocaleDateString()}</p>
+                
+                <div className="mt-4 pt-4 border-t border-slate-100 flex justify-end">
+                  <button onClick={() => handleRevoke(consent.doctor_id)} className="text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors">
+                    Revoke Access
+                  </button>
                 </div>
               </div>
             ))}
@@ -153,8 +188,4 @@ export default function PatientDashboard() {
       </div>
     </div>
   );
-}
-
-function Activity(props: any) {
-  return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
 }

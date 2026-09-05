@@ -16,27 +16,28 @@ with engine.connect() as conn:
         conn.execute(text("ALTER TABLE users DROP COLUMN mfa_secret"))
         conn.commit()
     except Exception:
-        pass
+        conn.rollback()
     try:
         conn.execute(text("ALTER TABLE users ADD COLUMN verification_status VARCHAR DEFAULT 'pending'"))
         conn.commit()
     except Exception:
-        pass
+        conn.rollback()
     try:
         conn.execute(text("ALTER TABLE users ADD COLUMN license_number VARCHAR"))
         conn.commit()
     except Exception:
-        pass
+        conn.rollback()
     try:
         conn.execute(text("ALTER TABLE medical_records ADD COLUMN doctor_id INTEGER REFERENCES users(id)"))
         conn.commit()
     except Exception:
-        pass
+        conn.rollback()
     try:
         conn.execute(text("ALTER TABLE medical_records ALTER COLUMN doctor_id DROP NOT NULL"))
         conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        conn.rollback()
+        print("MIGRATION ERROR (drop not null):", e)
 
 import traceback
 from fastapi import Request

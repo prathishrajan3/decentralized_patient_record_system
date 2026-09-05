@@ -32,6 +32,11 @@ with engine.connect() as conn:
         conn.commit()
     except Exception:
         pass
+    try:
+        conn.execute(text("ALTER TABLE medical_records ALTER COLUMN doctor_id DROP NOT NULL"))
+        conn.commit()
+    except Exception:
+        pass
 
 import traceback
 from fastapi import Request

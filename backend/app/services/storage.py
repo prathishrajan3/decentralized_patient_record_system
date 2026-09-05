@@ -9,7 +9,7 @@ class StorageService:
         if not SUPABASE_URL or not SUPABASE_KEY:
             raise ValueError("Supabase credentials not fully configured.")
         self.client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-        self.bucket_name = "medical-records"
+        self.bucket_name = "medical-documents"
         
         # Ensure bucket exists
         try:

@@ -86,9 +86,9 @@ def health_check():
         
     # Check Supabase
     try:
-        from .services.storage import supabase
+        from .services.storage import storage_service
         # Checking the bucket is a good way to see if the project is awake
-        supabase.storage.get_bucket("medical-records")
+        storage_service.client.storage.get_bucket("medical-documents")
         status_supabase = True
     except Exception:
         pass

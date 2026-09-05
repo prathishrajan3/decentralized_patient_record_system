@@ -57,10 +57,15 @@ async def upload_record(
     record_uuid = str(uuid.uuid4())
     tx_hash = None
     try:
-        # In MVP, if blockchain isn't fully configured, this might fail or be bypassed
+        # Require blockchain verification 
         tx_hash = blockchain_service.store_record_hash(record_uuid, original_hash)
     except Exception as e:
-        print(f"Blockchain submission failed (expected in dev without full setup): {e}")
+        # Delete the uploaded file from Supabase if blockchain fails so we don't leave orphaned files
+        try:
+            storage_service.client.storage.from_(storage_service.bucket_name).remove([file_name])
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail=f"Blockchain verification failed: {str(e)}")
 
     # Save to Database
     record = MedicalRecord(

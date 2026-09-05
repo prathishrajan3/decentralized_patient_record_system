@@ -38,34 +38,27 @@ class BlockchainService:
         Stores the SHA-256 hash of a medical record on the Sepolia blockchain.
         Returns the transaction hash.
         """
-        try:
-            if not self.w3 or not self.w3.is_connected():
-                raise Exception("Blockchain not connected")
+        if not self.w3 or not self.w3.is_connected():
+            raise Exception("Blockchain not connected (Check RPC_URL)")
 
-            nonce = self.w3.eth.get_transaction_count(self.account.address)
-            
-            # Build transaction
-            tx = self.contract.functions.storeRecordHash(
-                record_id, 
-                record_hash
-            ).build_transaction({
-                'from': self.account.address,
-                'nonce': nonce,
-                # Let Web3 estimate gas and gas price
-            })
+        nonce = self.w3.eth.get_transaction_count(self.account.address)
+        
+        # Build transaction
+        tx = self.contract.functions.storeRecordHash(
+            record_id, 
+            record_hash
+        ).build_transaction({
+            'from': self.account.address,
+            'nonce': nonce,
+            # Let Web3 estimate gas and gas price
+        })
 
-            # Sign transaction
-            signed_tx = self.w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
-            
-            # Send transaction
-            tx_hash = self.w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-            
-            return self.w3.to_hex(tx_hash)
-        except Exception as e:
-            print(f"Real blockchain transaction failed: {e}. Falling back to mock verification.")
-            import hashlib
-            import time
-            mock_hash = hashlib.sha256(f"{record_id}-{time.time()}".encode()).hexdigest()
-            return f"0x{mock_hash}"
+        # Sign transaction
+        signed_tx = self.w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
+        
+        # Send transaction
+        tx_hash = self.w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+        
+        return self.w3.to_hex(tx_hash)
 
 blockchain_service = BlockchainService()

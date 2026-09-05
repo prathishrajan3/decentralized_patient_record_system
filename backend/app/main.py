@@ -38,6 +38,13 @@ with engine.connect() as conn:
     except Exception as e:
         conn.rollback()
         print("MIGRATION ERROR (drop not null):", e)
+    try:
+        # Delete any records that failed blockchain verification (tx_hash is NULL)
+        conn.execute(text("DELETE FROM medical_records WHERE blockchain_tx_hash IS NULL"))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        print("MIGRATION ERROR (cleanup pending records):", e)
 
 import traceback
 from fastapi import Request

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { fetchApi } from '../lib/api';
 
@@ -10,6 +10,11 @@ export default function Login() {
   const [showMfa, setShowMfa] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [healthStatus, setHealthStatus] = useState<{neon_active?: boolean, supabase_active?: boolean} | null>(null);
+
+  useEffect(() => {
+    fetchApi('/health').then(setHealthStatus).catch(console.error);
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,6 +76,20 @@ export default function Login() {
           <p className="text-slate-500 text-sm mt-2 font-medium">Decentralized Patient Record System</p>
         </div>
         
+        {healthStatus && (healthStatus.neon_active === false || healthStatus.supabase_active === false) && (
+          <div className="bg-orange-50 text-orange-700 p-4 rounded-xl text-sm mb-6 border border-orange-200 shadow-sm">
+            <p className="font-bold mb-1">⚠️ Service Inactive</p>
+            <p>
+              {!healthStatus.neon_active && !healthStatus.supabase_active 
+                ? "Both the Neon Database and Supabase are currently inactive." 
+                : !healthStatus.neon_active 
+                  ? "The Neon Database is currently inactive (sleeping)." 
+                  : "Supabase is currently inactive (paused)."}
+            </p>
+            <p className="mt-1 opacity-90 text-xs">Login attempts may fail until they wake up or are manually restored.</p>
+          </div>
+        )}
+
         {error && <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm mb-6 border border-red-100 flex items-start gap-3 shadow-sm">
           <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
           {error}

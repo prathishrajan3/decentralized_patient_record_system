@@ -65,9 +65,39 @@ app.include_router(audit.router)
 app.include_router(clinical.router)
 app.include_router(fhir.router)
 
+from fastapi import Depends
+from sqlalchemy.orm import Session
+from .database import get_db
+
 @app.get("/health")
 def health_check():
-    return {"status": "ok"}
+    status_neon = False
+    status_supabase = False
+    
+    # Check Neon
+    try:
+        from sqlalchemy import text
+        from .database import SessionLocal
+        with SessionLocal() as db:
+            db.execute(text("SELECT 1"))
+            status_neon = True
+    except Exception:
+        pass
+        
+    # Check Supabase
+    try:
+        from .services.storage import supabase
+        # Checking the bucket is a good way to see if the project is awake
+        supabase.storage.get_bucket("medical-records")
+        status_supabase = True
+    except Exception:
+        pass
+
+    return {
+        "status": "ok" if status_neon and status_supabase else "error",
+        "neon_active": status_neon,
+        "supabase_active": status_supabase
+    }
 
 # Mount the frontend dist folder if it exists
 frontend_dist = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend", "dist")

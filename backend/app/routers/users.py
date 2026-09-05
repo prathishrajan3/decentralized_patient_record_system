@@ -170,8 +170,26 @@ def cleanup_database(db: Session = Depends(get_db), current_user: User = Depends
         db.query(AuditLog).delete()
         db.query(Consent).delete()
         
-        # We also need to clear files from Supabase if we really wanted to be thorough,
-        # but for a DB cleanup, clearing the records table is usually sufficient for testing.
+        # Clear files from Supabase
+        from ..services.storage import storage_service
+        try:
+            bucket = storage_service.client.storage.from_(storage_service.bucket_name)
+            folders = bucket.list()
+            paths = []
+            for f in folders:
+                folder_name = f.get('name')
+                if folder_name and folder_name != '.emptyFolderPlaceholder':
+                    # Need to list files inside the folder (patient_id)
+                    subfiles = bucket.list(folder_name)
+                    for sf in subfiles:
+                        file_name = sf.get('name')
+                        if file_name and file_name != '.emptyFolderPlaceholder':
+                            paths.append(f"{folder_name}/{file_name}")
+            if paths:
+                bucket.remove(paths)
+        except Exception as e:
+            print(f"Warning: Failed to clean Supabase bucket: {e}")
+            
         db.query(MedicalRecord).delete()
         
         # Delete all non-admin users

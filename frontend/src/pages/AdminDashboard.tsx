@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldAlert, Users, FileText, CheckCircle, LogOut, Trash2 } from 'lucide-react';
+import { ShieldAlert, Users, FileText, CheckCircle, LogOut, Trash2, KeyRound, Loader2 } from 'lucide-react';
 import { fetchApi } from '../lib/api';
 
 export default function AdminDashboard() {
@@ -10,6 +10,12 @@ export default function AdminDashboard() {
   const [pendingDoctors, setPendingDoctors] = useState<any[]>([]);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('users');
+  
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -39,6 +45,24 @@ export default function AdminDashboard() {
   const handleLogout = () => {
     localStorage.removeItem('access_token');
     navigate('/login');
+  };
+
+  const changePassword = async () => {
+    try {
+      setPasswordLoading(true);
+      await fetchApi('/users/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ current_password: currentPassword, new_password: newPassword })
+      });
+      alert("Password changed successfully!");
+      setShowPasswordModal(false);
+      setCurrentPassword('');
+      setNewPassword('');
+    } catch (err: any) {
+      alert(err.message || "Failed to change password");
+    } finally {
+      setPasswordLoading(false);
+    }
   };
 
   const handleDeleteUser = async (userId: number) => {
@@ -75,9 +99,14 @@ export default function AdminDashboard() {
             <p className="text-sm text-slate-500">System-wide monitoring</p>
           </div>
         </div>
-        <button onClick={handleLogout} className="btn-secondary flex items-center gap-2">
-          <LogOut className="w-4 h-4" /> Sign Out
-        </button>
+        <div className="flex gap-3">
+          <button onClick={() => setShowPasswordModal(true)} className="btn-secondary flex items-center gap-2">
+            <KeyRound className="w-4 h-4" /> Change Password
+          </button>
+          <button onClick={handleLogout} className="btn-secondary flex items-center gap-2 text-red-600 border-red-100 hover:bg-red-50">
+            <LogOut className="w-4 h-4" /> Sign Out
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -271,6 +300,55 @@ export default function AdminDashboard() {
           </div>
         )}
       </div>
+
+      {/* Change Password Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden relative">
+            <div className="p-6 border-b border-slate-100">
+              <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <KeyRound className="w-6 h-6 text-blue-500" />
+                Change Password
+              </h3>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Current Password</label>
+                <input 
+                  type="password" 
+                  className="input-field"
+                  value={currentPassword}
+                  onChange={e => setCurrentPassword(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">New Password</label>
+                <input 
+                  type="password" 
+                  className="input-field"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                />
+              </div>
+              <button 
+                onClick={changePassword} 
+                disabled={passwordLoading || !currentPassword || !newPassword} 
+                className="btn-primary w-full py-2 mt-2"
+              >
+                {passwordLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Update Password"}
+              </button>
+            </div>
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+              <button 
+                onClick={() => {setShowPasswordModal(false); setCurrentPassword(''); setNewPassword('');}}
+                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

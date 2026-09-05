@@ -91,31 +91,35 @@ export default function MainLayout() {
           )}
         </nav>
         
-        <div className="p-4 border-t border-slate-200/50 z-10 bg-white/40">
-          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/60 border border-white shadow-sm mb-3">
-            <div className="w-9 h-9 bg-gradient-to-tr from-slate-200 to-slate-100 rounded-full flex items-center justify-center shadow-inner border border-slate-200/60">
+        <div className="p-4 border-t border-slate-200/50 z-10 bg-white/40 mt-auto">
+          <div className="flex items-center gap-2 px-3 py-3 rounded-xl bg-white/60 border border-white shadow-sm">
+            <div className="w-9 h-9 bg-gradient-to-tr from-slate-200 to-slate-100 rounded-full flex items-center justify-center shadow-inner border border-slate-200/60 shrink-0">
               <span className="text-sm font-bold text-slate-600">{user?.full_name ? user.full_name.substring(0,2).toUpperCase() : (isDoctor ? 'DR' : 'PT')}</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-slate-800 truncate">{user?.full_name || (isDoctor ? 'Doctor User' : 'Patient User')}</p>
-              <p className="text-xs font-medium text-slate-500 truncate">{isDoctor ? `ID: ${user?.id || ''}` : `Patient ID: ${user?.id || ''}`}</p>
+              <p className="text-sm font-bold text-slate-800 truncate leading-tight">{user?.full_name || (isDoctor ? 'Doctor User' : 'Patient User')}</p>
+              <p className="text-[10px] font-medium text-slate-500 truncate">{isDoctor ? `ID: ${user?.id || ''}` : `Patient ID: ${user?.id || ''}`}</p>
+            </div>
+            <div className="flex flex-col gap-0.5 shrink-0">
+              <button 
+                onClick={() => setShowPasswordModal(true)}
+                title="Change Password"
+                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              >
+                <KeyRound className="w-3.5 h-3.5" />
+              </button>
+              <button 
+                onClick={() => {
+                  localStorage.removeItem('access_token');
+                  navigate('/login');
+                }}
+                title="Sign Out"
+                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
-          <button 
-            onClick={() => setShowPasswordModal(true)}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 font-semibold rounded-xl transition-colors border border-transparent hover:border-slate-200 mb-2"
-          >
-            <KeyRound className="w-4 h-4 text-blue-500" /> Change Password
-          </button>
-          <button 
-            onClick={() => {
-              localStorage.removeItem('access_token');
-              navigate('/login');
-            }}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 font-semibold rounded-xl transition-colors border border-transparent hover:border-red-100"
-          >
-            <LogOut className="w-4 h-4" /> Sign Out
-          </button>
         </div>
       </aside>
 

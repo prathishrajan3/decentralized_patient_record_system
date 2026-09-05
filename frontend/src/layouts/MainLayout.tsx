@@ -72,9 +72,6 @@ export default function MainLayout() {
               <Link to="/doctor" className={`flex items-center gap-3 px-4 py-3 font-semibold rounded-xl transition-all ${location.pathname === '/doctor' ? 'bg-[--color-primary]/5 text-[--color-primary] shadow-sm border border-[--color-primary]/10' : 'text-slate-600 hover:bg-slate-100 hover:text-[--color-primary]'}`}>
                 <Users className="w-5 h-5" /> Patient Access
               </Link>
-              <Link to="/doctor/search" className={`flex items-center gap-3 px-4 py-3 font-semibold rounded-xl transition-all ${location.pathname === '/doctor/search' ? 'bg-[--color-primary]/5 text-[--color-primary] shadow-sm border border-[--color-primary]/10' : 'text-slate-600 hover:bg-slate-100 hover:text-[--color-primary]'}`}>
-                <Search className="w-5 h-5" /> Search Patients
-              </Link>
             </>
           ) : (
             <>

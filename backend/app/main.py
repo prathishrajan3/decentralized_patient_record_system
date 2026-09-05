@@ -9,6 +9,30 @@ from .routers import users, records, consent, audit, clinical, fhir
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
+# Automatically add missing columns (simple migration for existing db)
+from sqlalchemy import text
+with engine.connect() as conn:
+    try:
+        conn.execute(text("ALTER TABLE users ADD COLUMN mfa_secret VARCHAR"))
+        conn.commit()
+    except Exception:
+        pass
+    try:
+        conn.execute(text("ALTER TABLE users ADD COLUMN verification_status VARCHAR DEFAULT 'pending'"))
+        conn.commit()
+    except Exception:
+        pass
+    try:
+        conn.execute(text("ALTER TABLE users ADD COLUMN license_number VARCHAR"))
+        conn.commit()
+    except Exception:
+        pass
+    try:
+        conn.execute(text("ALTER TABLE medical_records ADD COLUMN doctor_id INTEGER REFERENCES users(id)"))
+        conn.commit()
+    except Exception:
+        pass
+
 import traceback
 from fastapi import Request
 from fastapi.responses import JSONResponse

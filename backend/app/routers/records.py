@@ -51,7 +51,7 @@ async def upload_record(
     
     # Upload to Supabase
     file_name = f"{patient_id}/{uuid.uuid4()}_{file.filename}.enc"
-    storage_path = storage_service.upload_file(file_name, encrypted_bytes)
+    storage_path = storage_service.upload_file(file_name, encrypted_bytes, file.content_type or "application/octet-stream")
 
     # Store hash on Blockchain
     record_uuid = str(uuid.uuid4())

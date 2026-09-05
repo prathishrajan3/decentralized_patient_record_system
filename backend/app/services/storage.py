@@ -20,13 +20,14 @@ class StorageService:
         except Exception as e:
             print(f"Failed to check/create bucket: {e}")
 
-    def upload_file(self, file_path: str, file_bytes: bytes) -> str:
+    def upload_file(self, file_path: str, file_bytes: bytes, content_type: str = "application/octet-stream") -> str:
         """
         Uploads encrypted file bytes to Supabase Storage.
         """
         response = self.client.storage.from_(self.bucket_name).upload(
             path=file_path,
-            file=file_bytes
+            file=file_bytes,
+            file_options={"content-type": content_type}
         )
         return file_path
 

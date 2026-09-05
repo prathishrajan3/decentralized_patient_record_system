@@ -91,7 +91,17 @@ async def upload_record(
 def get_records(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     if current_user.role == RoleEnum.admin:
         records = db.query(MedicalRecord).all()
-        return records
+        return [{
+            "id": r.id,
+            "patient_id": r.patient_id,
+            "doctor_id": r.doctor_id,
+            "file_type": r.file_type or "General Health Record",
+            "supabase_file_path": r.supabase_file_path,
+            "ipfs_hash": r.ipfs_hash,
+            "blockchain_tx_hash": r.blockchain_tx_hash,
+            "record_hash": r.record_hash,
+            "created_at": r.created_at.isoformat() if r.created_at else None
+        } for r in records]
         
     elif current_user.role == RoleEnum.patient:
         records = db.query(MedicalRecord).filter(MedicalRecord.patient_id == current_user.id).all()
@@ -99,14 +109,34 @@ def get_records(db: Session = Depends(get_db), current_user: User = Depends(get_
         audit = AuditLog(user_id=current_user.id, action="VIEW_OWN_RECORDS")
         db.add(audit)
         db.commit()
-        return records
+        return [{
+            "id": r.id,
+            "patient_id": r.patient_id,
+            "doctor_id": r.doctor_id,
+            "file_type": r.file_type or "General Health Record",
+            "supabase_file_path": r.supabase_file_path,
+            "ipfs_hash": r.ipfs_hash,
+            "blockchain_tx_hash": r.blockchain_tx_hash,
+            "record_hash": r.record_hash,
+            "created_at": r.created_at.isoformat() if r.created_at else None
+        } for r in records]
     
     elif current_user.role == RoleEnum.doctor:
         # Doctor can see records of patients they have active consent for
         consents = db.query(Consent).filter(Consent.doctor_id == current_user.id, Consent.status == "active").all()
         patient_ids = [c.patient_id for c in consents]
         records = db.query(MedicalRecord).filter(MedicalRecord.patient_id.in_(patient_ids)).all()
-        return records
+        return [{
+            "id": r.id,
+            "patient_id": r.patient_id,
+            "doctor_id": r.doctor_id,
+            "file_type": r.file_type or "General Health Record",
+            "supabase_file_path": r.supabase_file_path,
+            "ipfs_hash": r.ipfs_hash,
+            "blockchain_tx_hash": r.blockchain_tx_hash,
+            "record_hash": r.record_hash,
+            "created_at": r.created_at.isoformat() if r.created_at else None
+        } for r in records]
 
 @router.get("/export")
 def export_patient_records(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):

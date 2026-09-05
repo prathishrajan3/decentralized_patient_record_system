@@ -57,7 +57,7 @@ class BlockchainService:
         signed_tx = self.w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
         
         # Send transaction
-        tx_hash = self.w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+        tx_hash = self.w3.eth.send_raw_transaction(signed_tx.raw_transaction)
         
         return self.w3.to_hex(tx_hash)
 

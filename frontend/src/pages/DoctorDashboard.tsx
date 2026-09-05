@@ -23,6 +23,21 @@ export default function DoctorDashboard() {
   const [entryMode, setEntryMode] = useState('File Upload');
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Search Dropdown State
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  // Close search dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setIsSearchFocused(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const [patientSearchQuery, setPatientSearchQuery] = useState('');
   
@@ -155,20 +170,6 @@ export default function DoctorDashboard() {
     p.full_name.toLowerCase().includes(emergencySearch.toLowerCase()) || 
     p.id.toString().includes(emergencySearch)
   ).slice(0, 5) : [];
-
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const searchRef = useRef<HTMLDivElement>(null);
-
-  // Close search dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        setIsSearchFocused(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto pb-12 relative">

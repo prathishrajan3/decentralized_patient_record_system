@@ -221,3 +221,16 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current_user: User 
     
     db.commit()
     return {"message": "User and all associated data successfully deleted"}
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+@router.post("/change-password")
+def change_password(req: ChangePasswordRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not verify_password(req.current_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Incorrect current password")
+    
+    current_user.hashed_password = get_password_hash(req.new_password)
+    db.commit()
+    return {"message": "Password changed successfully"}

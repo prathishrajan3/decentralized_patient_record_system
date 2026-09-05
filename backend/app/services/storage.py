@@ -29,6 +29,13 @@ class StorageService:
             file=file_bytes,
             file_options={"content-type": content_type}
         )
+        
+        # supabase-py can sometimes return a dict with an error or a Response object on failure
+        if hasattr(response, "error") and response.error:
+            raise Exception(f"Supabase upload failed: {response.error}")
+        if isinstance(response, dict) and response.get("error"):
+            raise Exception(f"Supabase upload failed: {response.get('error')}")
+            
         return file_path
 
     def download_file(self, file_path: str) -> bytes:

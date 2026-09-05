@@ -444,7 +444,7 @@ export default function DoctorDashboard() {
                   <input 
                     type="text" 
                     placeholder="Search by name..."
-                    className="input-field pl-9"
+                    className="input-field !pl-9"
                     value={emergencySearch}
                     onChange={e => {
                       setEmergencySearch(e.target.value);

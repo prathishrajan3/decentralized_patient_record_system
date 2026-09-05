@@ -13,7 +13,7 @@ Base.metadata.create_all(bind=engine)
 from sqlalchemy import text
 with engine.connect() as conn:
     try:
-        conn.execute(text("ALTER TABLE users ADD COLUMN mfa_secret VARCHAR"))
+        conn.execute(text("ALTER TABLE users DROP COLUMN mfa_secret"))
         conn.commit()
     except Exception:
         pass

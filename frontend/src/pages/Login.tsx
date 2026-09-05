@@ -6,8 +6,6 @@ export default function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [mfaCode, setMfaCode] = useState('');
-  const [showMfa, setShowMfa] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [healthStatus, setHealthStatus] = useState<{neon_active?: boolean, supabase_active?: boolean} | null>(null);
@@ -25,9 +23,6 @@ export default function Login() {
       const formData = new URLSearchParams();
       formData.append('username', email);
       formData.append('password', password);
-      if (showMfa && mfaCode) {
-        formData.append('mfa_code', mfaCode);
-      }
 
       const data = await fetchApi('/users/login', {
         method: 'POST',
@@ -50,12 +45,7 @@ export default function Login() {
         navigate('/patient');
       }
     } catch (err: any) {
-      if (err.message === 'MFA_REQUIRED') {
-        setShowMfa(true);
-        setError('Please enter your multi-factor authentication code.');
-      } else {
-        setError(err.message || 'Login failed');
-      }
+      setError(err.message || 'Login failed');
     } finally {
       setLoading(false);
     }
@@ -96,26 +86,16 @@ export default function Login() {
         </div>}
 
         <form onSubmit={handleLogin} className="space-y-6">
-          {!showMfa ? (
-            <>
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Email or Username</label>
-                <input type="text" value={email} onChange={e => setEmail(e.target.value)} required className="input-field" placeholder="user@example.com" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Password</label>
-                <input type="password" value={password} onChange={e => setPassword(e.target.value)} required className="input-field" placeholder="••••••••" />
-              </div>
-            </>
-          ) : (
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Authentication Code</label>
-              <input type="text" value={mfaCode} onChange={e => setMfaCode(e.target.value)} required className="input-field tracking-widest text-center text-xl font-mono" placeholder="000000" maxLength={6} />
-              <button type="button" onClick={() => setShowMfa(false)} className="text-xs text-slate-500 hover:text-slate-700 mt-2 block w-full text-center">Back to login</button>
-            </div>
-          )}
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">Email or Username</label>
+            <input type="text" value={email} onChange={e => setEmail(e.target.value)} required className="input-field" placeholder="user@example.com" />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">Password</label>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} required className="input-field" placeholder="••••••••" />
+          </div>
           <button type="submit" disabled={loading} className="w-full btn-primary mt-4 py-3 text-lg">
-            {loading ? 'Authenticating...' : (showMfa ? 'Verify Code' : 'Sign In')}
+            {loading ? 'Authenticating...' : 'Sign In'}
           </button>
         </form>
         

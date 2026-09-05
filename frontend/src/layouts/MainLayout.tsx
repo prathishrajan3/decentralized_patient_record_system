@@ -1,17 +1,13 @@
 
 import { useState, useEffect } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
-import { Shield, Activity, Users, FileText, LogOut, Search, Clock, ShieldCheck, Loader2, KeyRound } from 'lucide-react';
+import { Shield, Activity, Users, FileText, LogOut, Search, Clock, Loader2, KeyRound } from 'lucide-react';
 import { fetchApi } from '../lib/api';
 
 export default function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [user, setUser] = useState<any>(null);
-  const [showMfaModal, setShowMfaModal] = useState(false);
-  const [mfaData, setMfaData] = useState<{secret: string, provisioning_uri: string} | null>(null);
-  const [mfaCode, setMfaCode] = useState('');
-  const [mfaLoading, setMfaLoading] = useState(false);
   
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -29,36 +25,6 @@ export default function MainLayout() {
     } catch (err) {
       console.error("Failed to load user info:", err);
       // Don't auto-redirect here, let the protected route handle it
-    }
-  };
-
-  const setupMfa = async () => {
-    try {
-      setMfaLoading(true);
-      const data = await fetchApi('/users/mfa/setup', { method: 'POST' });
-      setMfaData(data);
-    } catch (err: any) {
-      alert(err.message || "Failed to setup MFA");
-    } finally {
-      setMfaLoading(false);
-    }
-  };
-
-  const verifyMfa = async () => {
-    try {
-      setMfaLoading(true);
-      await fetchApi('/users/mfa/verify', {
-        method: 'POST',
-        body: JSON.stringify({ mfa_code: mfaCode })
-      });
-      alert("MFA Successfully Verified!");
-      setShowMfaModal(false);
-      setMfaData(null);
-      setMfaCode('');
-    } catch (err: any) {
-      alert(err.message || "Invalid MFA code");
-    } finally {
-      setMfaLoading(false);
     }
   };
 
@@ -136,12 +102,6 @@ export default function MainLayout() {
             </div>
           </div>
           <button 
-            onClick={() => setShowMfaModal(true)}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 font-semibold rounded-xl transition-colors border border-transparent hover:border-slate-200 mb-2"
-          >
-            <ShieldCheck className="w-4 h-4 text-emerald-500" /> Security (MFA)
-          </button>
-          <button 
             onClick={() => setShowPasswordModal(true)}
             className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 font-semibold rounded-xl transition-colors border border-transparent hover:border-slate-200 mb-2"
           >
@@ -167,58 +127,6 @@ export default function MainLayout() {
           </div>
         </div>
       </main>
-
-      {/* MFA Modal */}
-      {showMfaModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden relative">
-            <div className="p-6 border-b border-slate-100">
-              <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <ShieldCheck className="w-6 h-6 text-emerald-500" />
-                Two-Factor Authentication
-              </h3>
-            </div>
-            <div className="p-6 space-y-4">
-              {!mfaData ? (
-                <div className="text-center">
-                  <p className="text-sm text-slate-600 mb-4">Enhance your account security by enabling Multi-Factor Authentication using an authenticator app (e.g. Google Authenticator, Authy).</p>
-                  <button onClick={setupMfa} disabled={mfaLoading} className="btn-primary w-full py-2">
-                    {mfaLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Set up MFA"}
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-4 text-center">
-                  <p className="text-sm text-slate-600">Scan this QR code in your authenticator app, or enter the secret manually:</p>
-                  <div className="bg-slate-50 p-4 rounded-xl font-mono text-lg tracking-widest text-slate-800 break-all border border-slate-200">
-                    {mfaData.secret}
-                  </div>
-                  <div className="mt-4">
-                    <input 
-                      type="text" 
-                      placeholder="Enter 6-digit code"
-                      className="input-field text-center text-xl tracking-widest font-mono"
-                      maxLength={6}
-                      value={mfaCode}
-                      onChange={e => setMfaCode(e.target.value)}
-                    />
-                  </div>
-                  <button onClick={verifyMfa} disabled={mfaLoading || mfaCode.length !== 6} className="btn-primary w-full py-2 mt-4">
-                    {mfaLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Verify & Enable"}
-                  </button>
-                </div>
-              )}
-            </div>
-            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
-              <button 
-                onClick={() => {setShowMfaModal(false); setMfaData(null); setMfaCode('');}}
-                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Change Password Modal */}
       {showPasswordModal && (

@@ -18,7 +18,6 @@ class User(Base):
     full_name = Column(String, nullable=False)
     role = Column(Enum(RoleEnum), nullable=False)
     license_number = Column(String, nullable=True) # Only for doctors
-    mfa_secret = Column(String, nullable=True) # For TOTP MFA
     verification_status = Column(String, default="pending") # pending, verified, rejected (only for doctors)
     created_at = Column(DateTime, default=datetime.utcnow)
 

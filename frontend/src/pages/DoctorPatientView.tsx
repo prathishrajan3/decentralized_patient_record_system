@@ -6,6 +6,7 @@ import { fetchApi } from '../lib/api';
 interface Record {
   id: number;
   file_type: string;
+  description?: string;
   created_at: string;
   patient_id: number;
   blockchain_tx_hash: string | null;
@@ -141,7 +142,12 @@ export default function DoctorPatientView() {
               {records.map((record) => (
                 <tr key={record.id} className="border-b border-slate-100 hover:bg-white/80 transition-colors group">
                   <td className="py-4 px-6 text-sm font-bold text-slate-700">#{record.id}</td>
-                  <td className="py-4 px-6 text-sm font-semibold text-slate-800">{record.file_type}</td>
+                  <td className="py-4 px-6 text-sm font-semibold text-slate-800">
+                    {record.file_type}
+                    {record.description && (
+                      <p className="text-xs text-slate-500 font-normal italic mt-1 max-w-xs break-words">"{record.description}"</p>
+                    )}
+                  </td>
                   <td className="py-4 px-6 text-sm text-slate-500 font-medium">
                     <div className="flex items-center gap-2">
                       <Clock className="w-4 h-4 text-slate-400" />

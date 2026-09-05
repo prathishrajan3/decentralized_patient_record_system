@@ -39,6 +39,11 @@ with engine.connect() as conn:
         conn.rollback()
         print("MIGRATION ERROR (drop not null):", e)
     try:
+        conn.execute(text("ALTER TABLE medical_records ADD COLUMN description VARCHAR"))
+        conn.commit()
+    except Exception:
+        conn.rollback()
+    try:
         # Delete any records that failed blockchain verification (tx_hash is NULL) or are corrupted
         conn.execute(text("DELETE FROM medical_records WHERE blockchain_tx_hash IS NULL OR blockchain_tx_hash = '' OR created_at IS NULL OR file_type IS NULL OR file_type = ''"))
         conn.commit()

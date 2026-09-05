@@ -18,6 +18,7 @@ router = APIRouter(prefix="/records", tags=["records"])
 async def upload_record(
     patient_id: int = Form(...),
     file_type: str = Form(...),
+    description: str = Form(None),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -74,7 +75,8 @@ async def upload_record(
         file_type=file_type,
         supabase_file_path=storage_path,
         record_hash=original_hash,
-        blockchain_tx_hash=tx_hash
+        blockchain_tx_hash=tx_hash,
+        description=description
     )
     db.add(record)
     
@@ -100,6 +102,7 @@ def get_records(db: Session = Depends(get_db), current_user: User = Depends(get_
             "ipfs_hash": r.ipfs_hash,
             "blockchain_tx_hash": r.blockchain_tx_hash,
             "record_hash": r.record_hash,
+            "description": r.description,
             "created_at": r.created_at.isoformat() if r.created_at else None
         } for r in records]
         
@@ -118,6 +121,7 @@ def get_records(db: Session = Depends(get_db), current_user: User = Depends(get_
             "ipfs_hash": r.ipfs_hash,
             "blockchain_tx_hash": r.blockchain_tx_hash,
             "record_hash": r.record_hash,
+            "description": r.description,
             "created_at": r.created_at.isoformat() if r.created_at else None
         } for r in records]
     
@@ -135,6 +139,7 @@ def get_records(db: Session = Depends(get_db), current_user: User = Depends(get_
             "ipfs_hash": r.ipfs_hash,
             "blockchain_tx_hash": r.blockchain_tx_hash,
             "record_hash": r.record_hash,
+            "description": r.description,
             "created_at": r.created_at.isoformat() if r.created_at else None
         } for r in records]
 
@@ -163,6 +168,7 @@ def export_patient_records(db: Session = Depends(get_db), current_user: User = D
             {
                 "id": r.id,
                 "file_type": r.file_type,
+                "description": r.description,
                 "created_at": r.created_at,
                 "doctor_id": r.doctor_id,
                 "blockchain_tx_hash": r.blockchain_tx_hash

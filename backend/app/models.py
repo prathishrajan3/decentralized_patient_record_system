@@ -36,6 +36,7 @@ class MedicalRecord(Base):
     ipfs_hash = Column(String, nullable=True) # Optional IPFS hash if used
     blockchain_tx_hash = Column(String, nullable=True) # The tx hash where the record hash was stored
     record_hash = Column(String, nullable=False) # SHA-256 hash of the encrypted file
+    description = Column(String, nullable=True) # Description of the medical record
     created_at = Column(DateTime, default=datetime.utcnow)
 
     patient = relationship("User", back_populates="records_as_patient", foreign_keys=[patient_id])

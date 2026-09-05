@@ -20,7 +20,8 @@ export default function DoctorDashboard() {
   
   // Upload State
   const [uploadPatientId, setUploadPatientId] = useState('');
-  const [entryMode, setEntryMode] = useState('File Upload');
+  const [entryMode, setEntryMode] = useState('Other');
+  const [uploadDescription, setUploadDescription] = useState('');
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -83,6 +84,7 @@ export default function DoctorDashboard() {
       const formData = new FormData();
       formData.append('patient_id', uploadPatientId);
       formData.append('file_type', entryMode);
+      if (uploadDescription) formData.append('description', uploadDescription);
       formData.append('file', fileInputRef.current.files[0]);
 
       await fetchApi('/records', {
@@ -92,6 +94,7 @@ export default function DoctorDashboard() {
       alert('Record encrypted and uploaded successfully!');
       if (fileInputRef.current) fileInputRef.current.value = '';
       setUploadPatientId('');
+      setUploadDescription('');
       fetchRecords();
     } catch (err: any) {
       alert(err.message || 'Upload failed. Check if patient has granted you consent.');
@@ -262,17 +265,34 @@ export default function DoctorDashboard() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Entry Type</label>
-                <select value={entryMode} onChange={e => setEntryMode(e.target.value)} className="input-field py-2">
-                  <option value="File Upload">File Upload</option>
-                  <option value="Prescription">Prescription</option>
-                  <option value="Diagnosis">Diagnosis</option>
-                  <option value="Observation (Vitals)">Observation (Vitals)</option>
+                <select 
+                  value={entryMode} 
+                  onChange={e => setEntryMode(e.target.value)} 
+                  className="input-field py-2"
+                >
+                  <option>Other</option>
+                  <option>Prescription</option>
+                  <option>Diagnosis</option>
+                  <option>Observation (Vitals)</option>
                 </select>
               </div>
             </div>
             
+            {entryMode === 'Other' && (
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Description</label>
+                <textarea 
+                  required
+                  placeholder="Describe the document..."
+                  className="w-full bg-white/50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--color-primary-light]/50 focus:border-[--color-primary-light] min-h-[80px]"
+                  value={uploadDescription}
+                  onChange={e => setUploadDescription(e.target.value)}
+                />
+              </div>
+            )}
+
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Document (PDF/Image)</label>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Document (PDF/Image)</label>
               <input type="file" required ref={fileInputRef} className="w-full text-sm text-slate-600 bg-white/60 border border-slate-200 rounded-xl p-1.5 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all cursor-pointer" />
             </div>
             

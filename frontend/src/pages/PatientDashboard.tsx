@@ -5,6 +5,7 @@ import { fetchApi } from '../lib/api';
 interface Record {
   id: number;
   file_type: string;
+  description?: string;
   created_at: string;
   doctor_id: number;
   blockchain_tx_hash: string | null;
@@ -295,7 +296,10 @@ export default function PatientDashboard() {
                   </div>
                   <div>
                     <h4 className="font-semibold text-slate-800">{record.file_type || 'Unknown Record Type'}</h4>
-                    <p className="text-sm text-slate-500 font-medium">
+                    {record.description && (
+                      <p className="text-sm text-slate-600 mt-0.5 italic">"{record.description}"</p>
+                    )}
+                    <p className="text-sm text-slate-500 font-medium mt-1">
                       {record.doctor_id ? `Added by Dr. ID ${record.doctor_id}` : 'Uploaded by You'} • {record.created_at ? new Date(record.created_at).toLocaleDateString() : 'N/A'}
                     </p>
                     <span className={`inline-flex items-center gap-1.5 mt-2.5 px-2.5 py-1 text-xs font-bold rounded-md ${record.blockchain_tx_hash ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60' : 'bg-amber-50 text-amber-700 border border-amber-200/60'}`}>

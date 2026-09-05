@@ -78,6 +78,27 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleCleanup = async () => {
+    if (!window.confirm('Are you absolutely sure you want to WIPE the entire database? This will delete all users, patients, doctors, records, and consents except for the admin account. This CANNOT BE UNDONE!')) {
+      return;
+    }
+    
+    if (window.prompt('Type "DELETE EVERYTHING" to confirm database wipe:') !== 'DELETE EVERYTHING') {
+      alert("Cleanup cancelled.");
+      return;
+    }
+
+    try {
+      await fetchApi('/users/admin/cleanup', { method: 'DELETE' });
+      alert("Database wiped successfully!");
+      loadData();
+    } catch (err: any) {
+      setError(err.message || 'Failed to cleanup database');
+      alert(err.message || 'Failed to cleanup database');
+    }
+  };
+
+
   const handleVerifyDoctor = async (userId: number, status: string) => {
     try {
       await fetchApi(`/users/${userId}/verify?status=${status}`, { method: 'POST' });
@@ -100,10 +121,13 @@ export default function AdminDashboard() {
           </div>
         </div>
         <div className="flex gap-3">
-          <button onClick={() => setShowPasswordModal(true)} className="btn-secondary flex items-center gap-2">
+          <button onClick={handleCleanup} className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 font-medium rounded-xl transition-colors border border-red-100 shadow-sm">
+            <Trash2 className="w-4 h-4" /> Wipe Database
+          </button>
+          <button onClick={() => setShowPasswordModal(true)} className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:bg-slate-50 font-medium rounded-xl transition-colors border border-slate-200 shadow-sm bg-white">
             <KeyRound className="w-4 h-4" /> Change Password
           </button>
-          <button onClick={handleLogout} className="btn-secondary flex items-center gap-2 text-red-600 border-red-100 hover:bg-red-50">
+          <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:bg-slate-50 font-medium rounded-xl transition-colors border border-slate-200 shadow-sm bg-white">
             <LogOut className="w-4 h-4" /> Sign Out
           </button>
         </div>

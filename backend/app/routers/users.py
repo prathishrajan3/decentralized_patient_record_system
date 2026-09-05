@@ -158,6 +158,31 @@ def verify_doctor(user_id: int, status: str = "verified", db: Session = Depends(
     db.commit()
     return {"message": f"Doctor verification status updated to {status}"}
 
+@router.delete("/admin/cleanup")
+def cleanup_database(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role != RoleEnum.admin:
+        raise HTTPException(status_code=403, detail="Not authorized. Admins only.")
+    
+    try:
+        from ..models import AuditLog, Consent, MedicalRecord
+        
+        # Delete dependent tables first
+        db.query(AuditLog).delete()
+        db.query(Consent).delete()
+        
+        # We also need to clear files from Supabase if we really wanted to be thorough,
+        # but for a DB cleanup, clearing the records table is usually sufficient for testing.
+        db.query(MedicalRecord).delete()
+        
+        # Delete all non-admin users
+        db.query(User).filter(User.role != RoleEnum.admin).delete()
+        
+        db.commit()
+        return {"message": "Database successfully cleaned up (all non-admin data removed)."}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to clean database: {str(e)}")
+
 @router.delete("/{user_id}")
 def delete_user(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     if current_user.role != RoleEnum.admin:

@@ -103,8 +103,17 @@ def get_patients(db: Session = Depends(get_db), current_user: User = Depends(get
     if current_user.role != RoleEnum.doctor:
         raise HTTPException(status_code=403, detail="Only doctors can search for patients.")
     
+    from ..models import Consent, ConsentRequest
     patients = db.query(User).filter(User.role == RoleEnum.patient).all()
-    return [{"id": p.id, "email": p.email, "full_name": p.full_name} for p in patients]
+    result = []
+    for p in patients:
+        status = "none"
+        if db.query(Consent).filter(Consent.patient_id == p.id, Consent.doctor_id == current_user.id, Consent.status == "active").first():
+            status = "granted"
+        elif db.query(ConsentRequest).filter(ConsentRequest.patient_id == p.id, ConsentRequest.doctor_id == current_user.id, ConsentRequest.status == "pending").first():
+            status = "pending"
+        result.append({"id": p.id, "email": p.email, "full_name": p.full_name, "consent_status": status})
+    return result
 
 @router.get("/doctors")
 def get_doctors(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):

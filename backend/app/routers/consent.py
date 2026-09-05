@@ -88,6 +88,15 @@ def request_consent(patient_id: int, db: Session = Depends(get_db), current_user
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
+    existing_consent = db.query(Consent).filter(
+        Consent.patient_id == patient_id,
+        Consent.doctor_id == current_user.id,
+        Consent.status == "active"
+    ).first()
+
+    if existing_consent:
+        return {"message": "Patient has already granted you active consent"}
+
     existing_request = db.query(ConsentRequest).filter(
         ConsentRequest.patient_id == patient_id,
         ConsentRequest.doctor_id == current_user.id,
@@ -141,9 +150,17 @@ def approve_request(request_id: int, db: Session = Depends(get_db), current_user
     # Approve request
     req.status = "approved"
     
-    # Create permanent consent
-    consent = Consent(patient_id=current_user.id, doctor_id=req.doctor_id)
-    db.add(consent)
+    # Check if a permanent consent already exists
+    existing_consent = db.query(Consent).filter(
+        Consent.patient_id == current_user.id,
+        Consent.doctor_id == req.doctor_id,
+        Consent.status == "active"
+    ).first()
+
+    if not existing_consent:
+        # Create permanent consent
+        consent = Consent(patient_id=current_user.id, doctor_id=req.doctor_id)
+        db.add(consent)
 
     audit = AuditLog(user_id=current_user.id, action="APPROVE_CONSENT_REQUEST", resource_id=str(req.doctor_id))
     db.add(audit)

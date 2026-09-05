@@ -323,9 +323,19 @@ export default function DoctorDashboard() {
                   <p className="font-bold text-slate-800 text-sm truncate">{p.full_name}</p>
                   <p className="text-xs text-slate-500 truncate">ID: {p.id} • {p.email}</p>
                 </div>
-                <button onClick={() => handleRequestConsent(p.id)} className="w-full sm:w-auto px-3 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-semibold rounded-lg text-xs transition-colors shrink-0 border border-emerald-200">
-                  Request Access
-                </button>
+                {p.consent_status === 'granted' ? (
+                  <span className="w-full sm:w-auto px-3 py-1.5 bg-blue-50 text-blue-600 font-semibold rounded-lg text-xs text-center border border-blue-200">
+                    Access Granted
+                  </span>
+                ) : p.consent_status === 'pending' ? (
+                  <span className="w-full sm:w-auto px-3 py-1.5 bg-amber-50 text-amber-600 font-semibold rounded-lg text-xs text-center border border-amber-200">
+                    Pending...
+                  </span>
+                ) : (
+                  <button onClick={() => { handleRequestConsent(p.id); setPatients(patients.map(pat => pat.id === p.id ? {...pat, consent_status: 'pending'} : pat)); }} className="w-full sm:w-auto px-3 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-semibold rounded-lg text-xs transition-colors shrink-0 border border-emerald-200">
+                    Request Access
+                  </button>
+                )}
               </div>
             ))}
             {!patientSearchQuery && (

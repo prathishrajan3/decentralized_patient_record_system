@@ -156,6 +156,20 @@ export default function DoctorDashboard() {
     p.id.toString().includes(emergencySearch)
   ).slice(0, 5) : [];
 
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  // Close search dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setIsSearchFocused(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   return (
     <div className="space-y-8 max-w-6xl mx-auto pb-12 relative">
       <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-400/10 rounded-full blur-3xl -z-10 pointer-events-none"></div>
@@ -171,15 +185,40 @@ export default function DoctorDashboard() {
           <p className="text-slate-500 font-medium text-sm">Manage your authorized patients and securely upload new medical records.</p>
         </div>
         <div className="flex flex-col sm:flex-row items-center gap-3">
-          <div className="relative w-full sm:w-64">
+          <div className="relative w-full sm:w-64 z-20" ref={searchRef}>
             <input 
               type="text" 
               placeholder="Search Patients..."
               className="w-full bg-white/80 border border-slate-200 shadow-sm rounded-xl pl-11 pr-4 py-2.5 text-sm focus:outline-none focus:ring-4 focus:ring-[--color-primary-light]/20 focus:border-[--color-primary-light] transition-all"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setIsSearchFocused(true)}
             />
-            <Search className="w-5 h-5 text-slate-400 absolute left-3.5 top-2.5" />
+            <Search className="w-5 h-5 text-slate-400 absolute left-3.5 top-2.5 pointer-events-none" />
+            
+            {/* Search Dropdown */}
+            {isSearchFocused && searchQuery && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-lg border border-slate-200/60 overflow-hidden">
+                {dashboardFilteredPatients.length > 0 ? (
+                  <div className="max-h-64 overflow-y-auto divide-y divide-slate-100">
+                    {dashboardFilteredPatients.map(p => (
+                      <div 
+                        key={p.id}
+                        onClick={() => navigate(`/doctor/patient/${p.id}`)}
+                        className="px-4 py-3 hover:bg-slate-50 cursor-pointer transition-colors"
+                      >
+                        <p className="font-bold text-slate-800 text-sm">{p.full_name}</p>
+                        <p className="text-xs text-slate-500">ID: {p.id} • {p.email}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="px-4 py-6 text-center text-sm text-slate-500">
+                    No authorized patients match your search.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <button 
             onClick={() => setShowEmergencyModal(true)}

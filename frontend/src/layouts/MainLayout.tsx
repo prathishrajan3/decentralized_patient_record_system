@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
-import { Shield, Activity, Users, FileText, LogOut, Search, Clock, Loader2, KeyRound } from 'lucide-react';
+import { Shield, Activity, Users, FileText, LogOut, Clock, Loader2, KeyRound } from 'lucide-react';
 import { fetchApi } from '../lib/api';
 
 export default function MainLayout() {

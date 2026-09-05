@@ -207,11 +207,15 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current_user: User 
     if user_to_delete.role == RoleEnum.admin:
         raise HTTPException(status_code=400, detail="Cannot delete an admin user")
 
-    from ..models import MedicalRecord, Consent, AuditLog
+    from ..models import MedicalRecord, Consent, AuditLog, ConsentRequest, Prescription, Diagnosis, Observation
     
     # Manually delete dependent records to avoid Foreign Key violations
     db.query(AuditLog).filter(AuditLog.user_id == user_id).delete()
     db.query(Consent).filter((Consent.patient_id == user_id) | (Consent.doctor_id == user_id)).delete()
+    db.query(ConsentRequest).filter((ConsentRequest.patient_id == user_id) | (ConsentRequest.doctor_id == user_id)).delete()
+    db.query(Prescription).filter((Prescription.patient_id == user_id) | (Prescription.doctor_id == user_id)).delete()
+    db.query(Diagnosis).filter((Diagnosis.patient_id == user_id) | (Diagnosis.doctor_id == user_id)).delete()
+    db.query(Observation).filter((Observation.patient_id == user_id) | (Observation.doctor_id == user_id)).delete()
     db.query(MedicalRecord).filter((MedicalRecord.patient_id == user_id) | (MedicalRecord.doctor_id == user_id)).delete()
     db.delete(user_to_delete)
     

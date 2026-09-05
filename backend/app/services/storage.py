@@ -26,8 +26,7 @@ class StorageService:
         """
         response = self.client.storage.from_(self.bucket_name).upload(
             path=file_path,
-            file=file_bytes,
-            file_options={"content-type": "application/octet-stream"}
+            file=file_bytes
         )
         return file_path
 

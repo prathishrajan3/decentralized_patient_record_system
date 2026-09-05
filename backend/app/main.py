@@ -47,7 +47,8 @@ app = FastAPI(
 async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=500,
-        content={"message": "Internal Server Error", "detail": str(exc), "traceback": traceback.format_exc()}
+        content={"message": "Internal Server Error", "detail": str(exc), "traceback": traceback.format_exc()},
+        headers={"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Credentials": "true"}
     )
 
 app.add_middleware(

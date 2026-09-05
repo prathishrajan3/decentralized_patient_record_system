@@ -33,6 +33,7 @@ export default function PatientDashboard() {
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadType, setUploadType] = useState('General Health Record');
   const [uploading, setUploading] = useState(false);
+  const [downloadingRecordId, setDownloadingRecordId] = useState<number | null>(null);
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
@@ -113,6 +114,47 @@ export default function PatientDashboard() {
       alert(err.message || "Failed to upload record");
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleDownload = async (recordId: number) => {
+    try {
+      setDownloadingRecordId(recordId);
+      
+      const token = localStorage.getItem('access_token');
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${apiUrl}/records/${recordId}/download`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Download failed');
+      }
+      
+      let filename = `record_${recordId}.enc`;
+      const disposition = response.headers.get('Content-Disposition');
+      if (disposition && disposition.indexOf('filename=') !== -1) {
+        const matches = /filename="([^"]*)"/.exec(disposition);
+        if (matches != null && matches[1]) filename = matches[1];
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert(err.message || 'Failed to download record');
+    } finally {
+      setDownloadingRecordId(null);
     }
   };
 
@@ -262,8 +304,17 @@ export default function PatientDashboard() {
                     </span>
                   </div>
                 </div>
-                <button className="flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:text-[--color-primary] hover:border-[--color-primary-light]/30 hover:bg-blue-50 transition-all shadow-sm">
-                  <Download className="w-4 h-4" /> Download
+                <button 
+                  onClick={() => handleDownload(record.id)}
+                  disabled={downloadingRecordId === record.id}
+                  className="flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:text-[--color-primary] hover:border-[--color-primary-light]/30 hover:bg-blue-50 transition-all shadow-sm disabled:opacity-50"
+                >
+                  {downloadingRecordId === record.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
+                  Download
                 </button>
               </div>
             ))}

@@ -7,6 +7,7 @@ import PatientDashboard from './pages/PatientDashboard';
 import PatientConsent from './pages/PatientConsent';
 import PatientAudit from './pages/PatientAudit';
 import DoctorDashboard from './pages/DoctorDashboard';
+import DoctorPatientView from './pages/DoctorPatientView';
 import AdminDashboard from './pages/AdminDashboard';
 
 function App() {
@@ -23,7 +24,7 @@ function App() {
           <Route path="/patient/consent" element={<PatientConsent />} />
           <Route path="/patient/audit" element={<PatientAudit />} />
           <Route path="/doctor" element={<DoctorDashboard />} />
-          <Route path="/doctor/search" element={<DoctorDashboard />} />
+          <Route path="/doctor/patient/:id" element={<DoctorPatientView />} />
         </Route>
 
         {/* Fallback routing */}

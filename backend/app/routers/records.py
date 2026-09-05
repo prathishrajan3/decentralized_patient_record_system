@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Response
 from sqlalchemy.orm import Session
 from typing import List
 import hashlib
@@ -186,3 +186,57 @@ def export_patient_records(db: Session = Depends(get_db), current_user: User = D
             } for a in audit_logs
         ]
     }
+
+@router.get("/{record_id}/download")
+def download_record(record_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # 1. Get record
+    record = db.query(MedicalRecord).filter(MedicalRecord.id == record_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="Record not found")
+        
+    # 2. Check permissions
+    if current_user.role == RoleEnum.patient:
+        if record.patient_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized to access this record")
+    elif current_user.role == RoleEnum.doctor:
+        consent = db.query(Consent).filter(
+            Consent.patient_id == record.patient_id,
+            Consent.doctor_id == current_user.id,
+            Consent.status == "active"
+        ).first()
+        if not consent:
+            raise HTTPException(status_code=403, detail="No active consent from this patient")
+    else:
+        raise HTTPException(status_code=403, detail="Admins cannot download records")
+        
+    # 3. Download from Supabase
+    try:
+        encrypted_bytes = storage_service.download_file(record.supabase_file_path)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve file from storage: {e}")
+        
+    # 4. Decrypt
+    try:
+        decrypted_bytes = crypto_service.decrypt(encrypted_bytes)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Failed to decrypt file")
+        
+    # Extract original filename from supabase_file_path if possible
+    # format is: patient_id/uuid_filename.ext.enc
+    file_name = record.supabase_file_path.split("/")[-1]
+    if file_name.endswith(".enc"):
+        file_name = file_name[:-4] # strip .enc
+    # also strip uuid_ (36 chars + 1 underscore)
+    if len(file_name) > 37 and file_name[36] == "_":
+        file_name = file_name[37:]
+        
+    headers = {
+        'Content-Disposition': f'attachment; filename="{file_name}"'
+    }
+    
+    # log audit
+    audit = AuditLog(user_id=current_user.id, action="DOWNLOAD_RECORD", resource_id=str(record.id))
+    db.add(audit)
+    db.commit()
+    
+    return Response(content=decrypted_bytes, headers=headers)

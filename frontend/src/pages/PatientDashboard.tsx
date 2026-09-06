@@ -120,7 +120,7 @@ export default function PatientDashboard() {
       setDownloadingRecordId(recordId);
       
       const token = localStorage.getItem('access_token');
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const apiUrl = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8000' : '');
       const response = await fetch(`${apiUrl}/records/${recordId}/download`, {
         method: 'GET',
         headers: {

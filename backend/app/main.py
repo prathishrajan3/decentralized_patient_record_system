@@ -55,10 +55,39 @@ import traceback
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
+import asyncio
+from contextlib import asynccontextmanager
+
+async def keep_alive_task():
+    while True:
+        try:
+            # Check Neon
+            from sqlalchemy import text
+            from .database import SessionLocal
+            with SessionLocal() as db:
+                db.execute(text("SELECT 1"))
+            
+            # Check Supabase
+            from .services.storage import storage_service
+            storage_service.client.storage.get_bucket("medical-documents")
+            
+            print("Keep-alive ping successful")
+        except Exception as e:
+            print(f"Keep-alive ping failed: {e}")
+            
+        await asyncio.sleep(4 * 60)  # 4 minutes
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    task = asyncio.create_task(keep_alive_task())
+    yield
+    task.cancel()
+
 app = FastAPI(
     title="Decentralized Patient Record System API",
     description="API for managing patient records, consent, and blockchain verification",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 @app.exception_handler(Exception)

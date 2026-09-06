@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { fetchApi } from '../lib/api';
+import { Activity, ShieldCheck, FileText, Lock, Loader2, AlertCircle } from 'lucide-react';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -52,57 +53,154 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden">
-      {/* Background decoration */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[--color-accent-light] rounded-full blur-[120px] opacity-50 -z-10 animate-pulse"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[--color-primary-light] rounded-full blur-[120px] opacity-40 -z-10"></div>
-      
-      <div className="glass-panel w-full max-w-md p-8 sm:p-10 z-10">
-        <div className="text-center mb-10">
-          <div className="w-16 h-16 bg-gradient-to-br from-[--color-primary] to-[--color-accent] rounded-2xl mx-auto mb-5 shadow-[0_8px_16px_rgba(14,165,233,0.3)] flex items-center justify-center">
-            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+    <div className="min-h-screen flex bg-white">
+      {/* Left Side - Branding (Hidden on mobile) */}
+      <div className="hidden lg:flex lg:w-1/2 bg-slate-50 relative flex-col justify-between overflow-hidden border-r border-slate-200">
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03]"></div>
+        
+        <div className="p-12 relative z-10">
+          <div className="flex items-center gap-3 mb-16">
+            <div className="w-10 h-10 bg-blue-700 rounded-lg flex items-center justify-center">
+              <Activity className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-slate-800 tracking-tight leading-none">DPRMS</h1>
+              <span className="text-xs uppercase font-semibold text-slate-500 tracking-wider">Health Systems</span>
+            </div>
           </div>
-          <h2 className="text-3xl font-extrabold text-slate-800 tracking-tight">Secure Access</h2>
-          <p className="text-slate-500 text-sm mt-2 font-medium">Decentralized Patient Record System</p>
+          
+          <div className="max-w-md">
+            <h2 className="text-4xl font-extrabold text-slate-900 tracking-tight leading-tight mb-6">
+              Secure access to your medical records.
+            </h2>
+            <p className="text-lg text-slate-600 mb-12">
+              The Decentralized Patient Record Management System provides hospital-grade security and complete privacy for your sensitive health information.
+            </p>
+            
+            <div className="space-y-6">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-5 h-5 text-blue-700" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-800">Advanced Security</h3>
+                  <p className="text-sm text-slate-600">Enterprise-level encryption ensures your data remains confidential.</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                  <Lock className="w-5 h-5 text-blue-700" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-800">Access Control</h3>
+                  <p className="text-sm text-slate-600">You decide which healthcare professionals can view your records.</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                  <FileText className="w-5 h-5 text-blue-700" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-800">Immutable Integrity</h3>
+                  <p className="text-sm text-slate-600">Blockchain verification guarantees your records cannot be tampered with.</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         
-        {healthStatus && (healthStatus.neon_active === false || healthStatus.supabase_active === false) && (
-          <div className="bg-orange-50 text-orange-700 p-4 rounded-xl text-sm mb-6 border border-orange-200 shadow-sm">
-            <p className="font-bold mb-1">⚠️ Service Inactive</p>
-            <p>
-              {!healthStatus.neon_active && !healthStatus.supabase_active 
-                ? "Both the Neon Database and Supabase are currently inactive." 
-                : !healthStatus.neon_active 
-                  ? "The Neon Database is currently inactive (sleeping)." 
-                  : "Supabase is currently inactive (paused)."}
+        <div className="p-12 relative z-10 text-sm text-slate-500 font-medium">
+          &copy; {new Date().getFullYear()} DPRMS Health Systems. Secure Portal.
+        </div>
+      </div>
+      
+      {/* Right Side - Login Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 bg-white relative">
+        <div className="w-full max-w-md">
+          
+          {/* Mobile Logo */}
+          <div className="lg:hidden flex items-center justify-center gap-3 mb-10">
+            <div className="w-10 h-10 bg-blue-700 rounded-lg flex items-center justify-center">
+              <Activity className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-slate-800 tracking-tight leading-none">DPRMS</h1>
+            </div>
+          </div>
+          
+          <div className="mb-10 text-center lg:text-left">
+            <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Welcome back</h2>
+            <p className="text-slate-500 mt-2">Please enter your details to sign in.</p>
+          </div>
+          
+          {healthStatus && (healthStatus.neon_active === false || healthStatus.supabase_active === false) && (
+            <div className="bg-amber-50 text-amber-800 p-4 rounded-xl text-sm mb-6 border border-amber-200 shadow-sm flex gap-3">
+              <AlertCircle className="w-5 h-5 shrink-0 text-amber-600" />
+              <div>
+                <p className="font-bold mb-1">Service Maintenance</p>
+                <p>
+                  {!healthStatus.neon_active && !healthStatus.supabase_active 
+                    ? "Database systems are currently inactive." 
+                    : !healthStatus.neon_active 
+                      ? "Primary database is currently inactive." 
+                      : "Storage system is currently inactive."}
+                </p>
+                <p className="mt-1 opacity-80 text-xs">Login attempts may experience delays.</p>
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="bg-red-50 text-red-700 p-4 rounded-xl text-sm mb-6 border border-red-200 flex items-start gap-3 shadow-sm">
+              <AlertCircle className="w-5 h-5 shrink-0 text-red-500" />
+              <div className="pt-0.5">{error}</div>
+            </div>
+          )}
+
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email or Username</label>
+              <input 
+                type="text" 
+                value={email} 
+                onChange={e => setEmail(e.target.value)} 
+                required 
+                className="input-field" 
+                placeholder="Enter your email" 
+              />
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-semibold text-slate-700">Password</label>
+              </div>
+              <input 
+                type="password" 
+                value={password} 
+                onChange={e => setPassword(e.target.value)} 
+                required 
+                className="input-field" 
+                placeholder="••••••••" 
+              />
+            </div>
+            <button type="submit" disabled={loading} className="w-full btn-primary py-3 text-base flex items-center justify-center gap-2 mt-4">
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" /> Authenticating...
+                </>
+              ) : 'Sign In'}
+            </button>
+          </form>
+          
+          <div className="mt-8 text-center">
+            <p className="text-sm text-slate-600">
+              Don't have an identity yet?{' '}
+              <Link to="/register" className="text-blue-600 font-semibold hover:text-blue-700 hover:underline transition-colors">
+                Create an account
+              </Link>
             </p>
-            <p className="mt-1 opacity-90 text-xs">Login attempts may fail until they wake up or are manually restored.</p>
           </div>
-        )}
-
-        {error && <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm mb-6 border border-red-100 flex items-start gap-3 shadow-sm">
-          <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-          {error}
-        </div>}
-
-        <form onSubmit={handleLogin} className="space-y-6">
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">Email or Username</label>
-            <input type="text" value={email} onChange={e => setEmail(e.target.value)} required className="input-field" placeholder="user@example.com" />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">Password</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} required className="input-field" placeholder="••••••••" />
-          </div>
-          <button type="submit" disabled={loading} className="w-full btn-primary mt-4 py-3 text-lg">
-            {loading ? 'Authenticating...' : 'Sign In'}
-          </button>
-        </form>
-        
-        <div className="mt-8 pt-6 border-t border-slate-200/50">
-          <p className="text-center text-sm text-slate-600">
-            Don't have an identity yet? <Link to="/register" className="text-[--color-primary-light] font-semibold hover:text-[--color-primary] hover:underline transition-colors">Create Identity</Link>
-          </p>
         </div>
       </div>
     </div>

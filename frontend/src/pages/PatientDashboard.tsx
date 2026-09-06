@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ShieldCheck, ShieldAlert, FileText, Download, Loader2, Activity, User, FileHeart, Bell, Upload, X } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, FileText, Download, Loader2, User, FileHeart, Bell, Upload, X, Shield } from 'lucide-react';
 import { fetchApi } from '../lib/api';
 
 interface Record {
@@ -71,7 +71,6 @@ export default function PatientDashboard() {
     try {
       await fetchApi(`/consent/requests/${requestId}/approve`, { method: 'POST' });
       setPendingRequests(pendingRequests.filter(r => r.id !== requestId));
-      // Refresh consents
       const consentsData = await fetchApi('/consent/active');
       setConsents(consentsData);
     } catch (err) {
@@ -101,11 +100,9 @@ export default function PatientDashboard() {
       await fetchApi('/records', {
         method: 'POST',
         body: formData,
-        // Don't set Content-Type header so browser sets multipart/form-data with boundary
       });
       setIsUploadModalOpen(false);
       setUploadFile(null);
-      // Refresh records
       const recordsData = await fetchApi('/records');
       setRecords(recordsData);
     } catch (err: any) {
@@ -159,22 +156,22 @@ export default function PatientDashboard() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
-        <div className="w-16 h-16 bg-white/50 rounded-2xl flex items-center justify-center shadow-sm">
-          <Loader2 className="w-8 h-8 animate-spin text-[--color-primary]" />
+        <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-200">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
         </div>
-        <p className="text-slate-500 font-medium">Loading your health portal...</p>
+        <p className="text-slate-500 font-medium">Loading your secure health portal...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto pb-12 relative">
-      <div className="absolute top-0 right-0 w-64 h-64 bg-blue-400/10 rounded-full blur-3xl -z-10 pointer-events-none"></div>
+    <div className="space-y-6">
       
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h2 className="text-3xl font-extrabold text-slate-800 tracking-tight">Welcome back</h2>
-          <p className="text-slate-500 mt-1 font-medium text-sm">Here is the latest overview of your health records.</p>
+          <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Welcome back, {user?.full_name?.split(' ')[0] || 'Patient'}</h2>
+          <p className="text-slate-500 mt-1 text-sm font-medium">Manage your medical records and access permissions securely.</p>
         </div>
         <div className="flex flex-col sm:flex-row items-center gap-3">
           <button 
@@ -193,9 +190,9 @@ export default function PatientDashboard() {
                 alert("Failed to export FHIR data: " + e.message);
               }
             }}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300 font-semibold rounded-xl transition-colors shadow-sm"
+            className="w-full sm:w-auto btn-secondary flex items-center justify-center gap-2 text-sm"
           >
-            <Download className="w-5 h-5" /> Export FHIR
+            <Download className="w-4 h-4" /> Export FHIR
           </button>
           <button 
             onClick={async () => {
@@ -213,141 +210,139 @@ export default function PatientDashboard() {
                 alert("Failed to export history: " + e.message);
               }
             }}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 font-semibold rounded-xl transition-colors shadow-sm"
+            className="w-full sm:w-auto btn-secondary flex items-center justify-center gap-2 text-sm"
           >
-            <Download className="w-5 h-5" /> Export Full History
+            <Download className="w-4 h-4" /> Export History
           </button>
-          <button onClick={() => setIsUploadModalOpen(true)} className="w-full sm:w-auto btn-primary flex items-center justify-center gap-2 py-2.5 px-5 shadow-sm">
-            <Upload className="w-5 h-5" /> Upload Record
+          <button onClick={() => setIsUploadModalOpen(true)} className="w-full sm:w-auto btn-primary flex items-center justify-center gap-2 text-sm">
+            <Upload className="w-4 h-4" /> Upload Record
           </button>
         </div>
       </div>
 
+      {/* Overview Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="glass-card p-6">
-          <div className="flex items-center gap-4">
-            <div className="p-3.5 bg-blue-50 text-blue-600 rounded-xl shadow-inner border border-blue-100">
-              <FileHeart className="w-7 h-7" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Total Records</p>
-              <h3 className="text-3xl font-extrabold text-slate-800 tracking-tight mt-0.5">{records.length}</h3>
-            </div>
+        <div className="medical-card p-6 flex items-center gap-4">
+          <div className="p-3 bg-blue-50 text-blue-700 rounded-lg border border-blue-100">
+            <FileHeart className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Medical Records</p>
+            <h3 className="text-2xl font-bold text-slate-800 mt-1">{records.length}</h3>
           </div>
         </div>
         
-        <div className="glass-card p-6">
-          <div className="flex items-center gap-4">
-            <div className="p-3.5 bg-emerald-50 text-emerald-600 rounded-xl shadow-inner border border-emerald-100">
-              <User className="w-7 h-7" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Active Consents</p>
-              <h3 className="text-3xl font-extrabold text-slate-800 tracking-tight mt-0.5">{consents.length}</h3>
-            </div>
+        <div className="medical-card p-6 flex items-center gap-4">
+          <div className="p-3 bg-green-50 text-green-700 rounded-lg border border-green-100">
+            <User className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Active Access</p>
+            <h3 className="text-2xl font-bold text-slate-800 mt-1">{consents.length}</h3>
           </div>
         </div>
         
-        <div className="glass-card p-6">
-          <div className="flex items-center gap-4">
-            <div className="p-3.5 bg-indigo-50 text-indigo-600 rounded-xl shadow-inner border border-indigo-100">
-              <Activity className="w-7 h-7" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Verifications</p>
-              <h3 className="text-3xl font-extrabold text-slate-800 tracking-tight mt-0.5">
-                {records.filter(r => r.blockchain_tx_hash).length}
-              </h3>
-            </div>
+        <div className="medical-card p-6 flex items-center gap-4">
+          <div className="p-3 bg-indigo-50 text-indigo-700 rounded-lg border border-indigo-100">
+            <ShieldCheck className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Verified Records</p>
+            <h3 className="text-2xl font-bold text-slate-800 mt-1">
+              {records.filter(r => r.blockchain_tx_hash).length}
+            </h3>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 glass-panel p-6 sm:p-8">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-bold text-slate-800">Recent Medical Records</h3>
-            <button className="text-sm font-semibold text-[--color-primary-light] hover:text-[--color-primary] transition-colors">View All</button>
-          </div>
-          
-          <div className="space-y-4">
-            {records.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
-                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
-                  <FileText className="w-8 h-8 text-slate-300" />
-                </div>
-                <h4 className="text-slate-700 font-semibold mb-1">No medical records yet</h4>
-                <p className="text-sm text-slate-500 max-w-sm">When doctors upload your health records or test results, they will securely appear here.</p>
-              </div>
-            )}
+        {/* Left Column - Records */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="medical-card flex flex-col h-full">
+            <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <FileText className="w-5 h-5 text-slate-400" /> Recent Medical Records
+              </h3>
+            </div>
             
-            {records.map((record) => (
-              <div key={record.id} className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white/60 hover:bg-white border border-slate-200/60 rounded-xl transition-all shadow-sm hover:shadow-md">
-                <div className="flex items-start gap-4 mb-4 sm:mb-0">
-                  <div className="mt-1 p-2 bg-slate-50 rounded-lg border border-slate-100">
-                    {record.blockchain_tx_hash ? (
-                      <ShieldCheck className="w-6 h-6 text-emerald-500" />
-                    ) : (
-                      <ShieldAlert className="w-6 h-6 text-amber-500" />
-                    )}
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-slate-800">{record.file_type || 'Unknown Record Type'}</h4>
-                    {record.description && (
-                      <p className="text-sm text-slate-600 mt-0.5 italic">"{record.description}"</p>
-                    )}
-                    <p className="text-sm text-slate-500 font-medium mt-1">
-                      {record.doctor_id ? `Added by Dr. ID ${record.doctor_id}` : 'Uploaded by You'} • {record.created_at ? new Date(record.created_at).toLocaleDateString() : 'N/A'}
-                    </p>
-                    <span className={`inline-flex items-center gap-1.5 mt-2.5 px-2.5 py-1 text-xs font-bold rounded-md ${record.blockchain_tx_hash ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60' : 'bg-amber-50 text-amber-700 border border-amber-200/60'}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${record.blockchain_tx_hash ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
-                      {record.blockchain_tx_hash ? 'Verified on Sepolia' : 'Unverified'}
-                    </span>
-                  </div>
+            <div className="p-5 sm:p-6 flex-1">
+              {records.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                  <FileText className="w-10 h-10 text-slate-300 mb-3" />
+                  <h4 className="text-slate-700 font-semibold mb-1">No medical records yet</h4>
+                  <p className="text-sm text-slate-500 max-w-sm">Upload your first medical record or wait for your doctor to share one.</p>
                 </div>
-                <button 
-                  onClick={() => handleDownload(record.id)}
-                  disabled={downloadingRecordId === record.id}
-                  className="flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:text-[--color-primary] hover:border-[--color-primary-light]/30 hover:bg-blue-50 transition-all shadow-sm disabled:opacity-50"
-                >
-                  {downloadingRecordId === record.id ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Download className="w-4 h-4" />
-                  )}
-                  Download
-                </button>
-              </div>
-            ))}
+              ) : (
+                <div className="space-y-4">
+                  {records.map((record) => (
+                    <div key={record.id} className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white border border-slate-200 rounded-xl hover:border-blue-200 transition-all shadow-sm">
+                      <div className="flex items-start gap-4 mb-4 sm:mb-0">
+                        <div className="mt-1 p-2 bg-slate-50 rounded-lg border border-slate-100 shrink-0">
+                          <FileText className="w-6 h-6 text-slate-400" />
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-slate-800 leading-tight">{record.file_type || 'Clinical Document'}</h4>
+                          {record.description && (
+                            <p className="text-sm text-slate-600 mt-1">"{record.description}"</p>
+                          )}
+                          <p className="text-xs text-slate-500 font-medium mt-1">
+                            {record.doctor_id ? `Uploaded by Dr. ID: ${record.doctor_id}` : 'Uploaded by You'} • {record.created_at ? new Date(record.created_at).toLocaleDateString() : 'Unknown Date'}
+                          </p>
+                          <div className="mt-2">
+                            {record.blockchain_tx_hash ? (
+                              <span className="badge badge-success gap-1">
+                                <ShieldCheck className="w-3 h-3" /> Blockchain Verified
+                              </span>
+                            ) : (
+                              <span className="badge badge-warning gap-1">
+                                <ShieldAlert className="w-3 h-3" /> Pending Verification
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => handleDownload(record.id)}
+                        disabled={downloadingRecordId === record.id}
+                        className="btn-secondary w-full sm:w-auto text-sm px-3 py-1.5 flex justify-center items-center gap-1.5"
+                      >
+                        {downloadingRecordId === record.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Download className="w-4 h-4" />
+                        )}
+                        Download
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-
-
         </div>
 
-        <div className="glass-panel p-6 sm:p-8 space-y-8">
+        {/* Right Column - Consents & Requests */}
+        <div className="space-y-6">
+          
+          {/* Pending Requests */}
           {pendingRequests.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <h3 className="text-xl font-bold text-slate-800">Pending Requests</h3>
-                <span className="flex items-center justify-center w-6 h-6 bg-amber-100 text-amber-700 text-xs font-bold rounded-full">{pendingRequests.length}</span>
+            <div className="medical-card border-amber-200 overflow-hidden">
+              <div className="bg-amber-50 p-4 border-b border-amber-100 flex items-center justify-between">
+                <h3 className="text-sm font-bold text-amber-800 flex items-center gap-2">
+                  <Bell className="w-4 h-4" /> Pending Access Requests
+                </h3>
+                <span className="bg-amber-200 text-amber-800 text-xs font-bold px-2 py-0.5 rounded-full">{pendingRequests.length}</span>
               </div>
-              <div className="space-y-4">
+              <div className="p-4 space-y-3 bg-white">
                 {pendingRequests.map(req => (
-                  <div key={req.id} className="p-4 bg-amber-50/50 border border-amber-200/50 rounded-xl shadow-sm">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 bg-amber-100 text-amber-600 rounded-lg shrink-0">
-                        <Bell className="w-5 h-5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-bold text-slate-800 text-sm">Dr. {req.doctor_name}</h4>
-                        <p className="text-xs text-slate-500">Requested access to your records</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 mt-4 pt-3 border-t border-amber-200/30">
-                      <button onClick={() => handleApproveRequest(req.id)} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-1.5 px-3 rounded-lg text-sm transition-colors">
+                  <div key={req.id} className="p-3 bg-slate-50 border border-slate-100 rounded-lg">
+                    <p className="text-sm font-semibold text-slate-800 mb-1">Dr. {req.doctor_name}</p>
+                    <p className="text-xs text-slate-500 mb-3">Requested access to your records on {new Date(req.created_at).toLocaleDateString()}</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => handleApproveRequest(req.id)} className="flex-1 btn-primary py-1.5 text-xs">
                         Approve
                       </button>
-                      <button onClick={() => handleRejectRequest(req.id)} className="flex-1 bg-white hover:bg-red-50 text-slate-600 hover:text-red-600 border border-slate-200 hover:border-red-200 font-semibold py-1.5 px-3 rounded-lg text-sm transition-colors">
+                      <button onClick={() => handleRejectRequest(req.id)} className="flex-1 btn-danger py-1.5 text-xs">
                         Reject
                       </button>
                     </div>
@@ -357,66 +352,70 @@ export default function PatientDashboard() {
             </div>
           )}
 
-          <div>
-            <h3 className="text-xl font-bold text-slate-800 mb-4">Active Consents</h3>
-          <div className="space-y-4">
-            {consents.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-10 px-4 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
-                <ShieldAlert className="w-10 h-10 text-slate-300 mb-3" />
-                <h4 className="text-slate-700 font-semibold mb-1">No active consents</h4>
-                <p className="text-xs text-slate-500">You haven't granted any doctor access to your records yet.</p>
-              </div>
-            )}
-            
-            {consents.map((consent) => (
-              <div key={consent.id} className="p-5 bg-white/60 border border-slate-200/60 rounded-xl shadow-sm hover:shadow-md transition-all">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-8 h-8 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs">
-                    DR
-                  </div>
-                  <h4 className="font-bold text-slate-800">Doctor #{consent.doctor_id}</h4>
+          {/* Active Consents */}
+          <div className="medical-card">
+            <div className="p-5 border-b border-slate-100">
+              <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <Shield className="w-5 h-5 text-slate-400" /> Active Access
+              </h3>
+            </div>
+            <div className="p-5">
+              {consents.length === 0 ? (
+                <div className="text-center py-6">
+                  <ShieldAlert className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                  <p className="text-sm text-slate-500">No doctors currently have access to your records.</p>
                 </div>
-                <p className="text-xs font-medium text-slate-500 ml-11">Granted on {new Date(consent.granted_at).toLocaleDateString()}</p>
-                
-                <div className="mt-4 pt-4 border-t border-slate-100 flex justify-end">
-                  <button onClick={() => handleRevoke(consent.doctor_id)} className="text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors">
-                    Revoke Access
-                  </button>
+              ) : (
+                <div className="space-y-3">
+                  {consents.map((consent) => (
+                    <div key={consent.id} className="p-3 border border-slate-100 rounded-lg flex items-center justify-between hover:bg-slate-50 transition-colors">
+                      <div>
+                        <p className="text-sm font-bold text-slate-800">Doctor ID: {consent.doctor_id}</p>
+                        <p className="text-xs text-slate-500">Granted: {new Date(consent.granted_at).toLocaleDateString()}</p>
+                      </div>
+                      <button onClick={() => handleRevoke(consent.doctor_id)} className="text-xs font-semibold text-red-600 hover:text-red-700 underline px-2 py-1">
+                        Revoke
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            ))}
+              )}
+            </div>
           </div>
-          </div>
+
         </div>
       </div>
 
       {/* Upload Modal */}
       {isUploadModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between p-5 border-b border-slate-100">
-              <h3 className="text-lg font-bold text-slate-800">Upload Health Record</h3>
-              <button onClick={() => setIsUploadModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-50 transition-colors">
+        <div className="fixed inset-0 modal-overlay z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-slate-800">Upload Medical Record</h3>
+              <button onClick={() => setIsUploadModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleUpload} className="p-5 space-y-4">
+            <form onSubmit={handleUpload} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Record Type</label>
-                <select value={uploadType} onChange={(e) => setUploadType(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[--color-primary] focus:border-transparent transition-all">
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Document Type</label>
+                <select value={uploadType} onChange={(e) => setUploadType(e.target.value)} className="input-field">
                   <option value="General Health Record">General Health Record</option>
                   <option value="Blood Test Results">Blood Test Results</option>
                   <option value="Prescription">Prescription</option>
                   <option value="X-Ray / Scan">X-Ray / Scan</option>
+                  <option value="Clinical Notes">Clinical Notes</option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">File</label>
-                <input type="file" required onChange={(e) => setUploadFile(e.target.files?.[0] || null)} className="w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-[--color-primary] hover:file:bg-blue-100 transition-all" />
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">File</label>
+                <div className="border border-slate-200 rounded-lg p-1">
+                  <input type="file" required onChange={(e) => setUploadFile(e.target.files?.[0] || null)} className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 transition-all cursor-pointer" />
+                </div>
               </div>
               <div className="pt-2">
-                <button type="submit" disabled={uploading || !uploadFile} className="w-full btn-primary py-3">
-                  {uploading ? 'Encrypting & Uploading...' : 'Upload Securely'}
+                <button type="submit" disabled={uploading || !uploadFile} className="w-full btn-primary py-2.5">
+                  {uploading ? 'Encrypting & Uploading...' : 'Secure Upload'}
                 </button>
               </div>
             </form>

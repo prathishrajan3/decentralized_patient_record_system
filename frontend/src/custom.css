@@ -1,16 +1,24 @@
 :root {
-  --color-primary: #1e3a8a;
-  --color-primary-light: #3b82f6;
-  --color-accent: #0ea5e9;
-  --color-accent-light: #7dd3fc;
-  --color-background-start: #f1f5f9;
-  --color-background-end: #e2e8f0;
+  --color-primary: #1e3a8a; /* Deep Medical Navy */
+  --color-primary-light: #2563eb; /* Medical Blue */
+  --color-accent: #0d9488; /* Subtle Teal */
+  --color-accent-light: #5eead4;
+  --color-background-start: #f8fafc; /* Very Light Clinical Gray */
+  --color-background-end: #f1f5f9;
+  
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+  --color-danger: #dc2626;
+  
+  --color-text-main: #0f172a;
+  --color-text-muted: #64748b;
+  --color-border: #e2e8f0;
 }
 
 body {
-  background: linear-gradient(to bottom right, var(--color-background-start), var(--color-background-end));
+  background-color: var(--color-background-start);
   min-height: 100vh;
-  color: #1e293b; /* slate-800 */
+  color: var(--color-text-main);
   -webkit-font-smoothing: antialiased;
   font-family: "Inter", sans-serif;
 }
@@ -24,88 +32,147 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background-color: #cbd5e1; /* slate-300 */
+  background-color: #cbd5e1;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #94a3b8; /* slate-400 */
+  background-color: #94a3b8;
 }
 
+/* Replaced glass-panel with medical-card style */
 .glass-panel {
-  background-color: rgb(255 255 255 / 0.7);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgb(255 255 255 / 0.6);
-  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
-  border-radius: 1rem; /* rounded-2xl */
+  background-color: #ffffff;
+  border: 1px solid var(--color-border);
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  border-radius: 12px;
 }
 
+/* Replaced glass-card with subtle medical card style */
 .glass-card {
-  background-color: rgb(255 255 255 / 0.6);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgb(255 255 255 / 0.5);
-  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  border-radius: 0.75rem; /* rounded-xl */
-  transition: all 0.3s ease;
+  background-color: #ffffff;
+  border: 1px solid var(--color-border);
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  border-radius: 12px;
+  transition: all 0.2s ease-in-out;
 }
 .glass-card:hover {
-  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
-  transform: translateY(-0.25rem);
-  background-color: rgb(255 255 255 / 0.8);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+  transform: translateY(-2px);
+  border-color: #cbd5e1;
 }
 
 .btn-primary {
-  background: linear-gradient(to right, var(--color-primary), var(--color-primary-light));
+  background-color: var(--color-primary-light);
   color: white;
-  padding: 0.5rem 1.5rem;
-  border-radius: 0.75rem;
+  padding: 0.5rem 1.25rem;
+  border-radius: 8px;
   font-weight: 500;
-  box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
-  transition: all 0.3s ease;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
 }
 .btn-primary:hover {
-  box-shadow: 0 20px 25px -5px rgba(59, 130, 246, 0.4);
-  transform: translateY(-2px);
+  background-color: var(--color-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
 }
 .btn-primary:active {
-  transform: scale(0.98);
+  transform: translateY(0);
 }
 .btn-primary:disabled {
-  opacity: 0.7;
+  opacity: 0.6;
   cursor: not-allowed;
   transform: none;
+  box-shadow: none;
 }
 
 .btn-secondary {
   background-color: white;
-  color: var(--color-primary);
-  border: 2px solid rgba(59, 130, 246, 0.2);
-  padding: 0.5rem 1.5rem;
-  border-radius: 0.75rem;
+  color: var(--color-text-main);
+  border: 1px solid #cbd5e1;
+  padding: 0.5rem 1.25rem;
+  border-radius: 8px;
   font-weight: 500;
   box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 }
 .btn-secondary:hover {
-  background-color: #f8fafc; /* slate-50 */
-  border-color: rgba(59, 130, 246, 0.5);
-  transform: translateY(-2px);
+  background-color: #f8fafc;
+  border-color: #94a3b8;
+  transform: translateY(-1px);
 }
 .btn-secondary:active {
-  transform: scale(0.98);
+  transform: translateY(0);
+}
+
+.btn-danger {
+  background-color: #fef2f2;
+  color: var(--color-danger);
+  border: 1px solid #fecaca;
+  padding: 0.5rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+.btn-danger:hover {
+  background-color: #fee2e2;
+  border-color: #fca5a5;
+  transform: translateY(-1px);
+}
+.btn-danger:active {
+  transform: translateY(0);
 }
 
 .input-field {
   width: 100%;
-  background-color: rgb(255 255 255 / 0.8);
-  border: 1px solid #e2e8f0; /* slate-200 */
-  border-radius: 0.75rem;
-  padding: 0.75rem 1rem;
-  transition: all 0.3s ease;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: var(--color-text-main);
+  border-radius: 8px;
+  padding: 0.625rem 1rem;
+  transition: all 0.2s ease;
 }
 .input-field:focus {
   outline: none;
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
   border-color: var(--color-primary-light);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+.input-field::placeholder {
+  color: #94a3b8;
+}
+
+/* Status Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+}
+.badge-success {
+  background-color: #f0fdf4;
+  color: var(--color-success);
+  border: 1px solid #bbf7d0;
+}
+.badge-warning {
+  background-color: #fffbeb;
+  color: var(--color-warning);
+  border: 1px solid #fef3c7;
+}
+.badge-danger {
+  background-color: #fef2f2;
+  color: var(--color-danger);
+  border: 1px solid #fecaca;
+}
+.badge-neutral {
+  background-color: #f1f5f9;
+  color: var(--color-text-muted);
+  border: 1px solid #e2e8f0;
+}
+
+/* Modal overlays */
+.modal-overlay {
+  background-color: rgba(15, 23, 42, 0.4);
 }

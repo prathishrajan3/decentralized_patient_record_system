@@ -51,6 +51,36 @@ with engine.connect() as conn:
         conn.rollback()
         print("MIGRATION ERROR (cleanup pending records):", e)
 
+# Seed default admin user if not exists
+from .models import User, RoleEnum
+from .services.auth import get_password_hash
+from .database import SessionLocal
+
+with SessionLocal() as db:
+    try:
+        db.execute(text("ALTER TYPE roleenum ADD VALUE IF NOT EXISTS 'admin'"))
+        db.commit()
+    except Exception:
+        db.rollback()
+
+    try:
+        admin_user = db.query(User).filter(User.role == RoleEnum.admin).first()
+        if not admin_user:
+            hashed = get_password_hash("Qwerty123456")
+            admin_user = User(
+                id=999999,
+                email="admin",
+                hashed_password=hashed,
+                full_name="System Administrator",
+                role=RoleEnum.admin
+            )
+            db.add(admin_user)
+            db.commit()
+            print("Default admin user initialized successfully.")
+    except Exception as e:
+        db.rollback()
+        print("Admin user initialization error:", e)
+
 import traceback
 from fastapi import Request
 from fastapi.responses import JSONResponse

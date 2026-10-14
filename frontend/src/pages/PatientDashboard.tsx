@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ShieldCheck, ShieldAlert, FileText, Download, Loader2, User, FileHeart, Bell, Upload, X, Shield } from 'lucide-react';
-import { fetchApi } from '../lib/api';
+import { fetchApi, API_URL } from '../lib/api';
 
 interface Record {
   id: number;
@@ -117,7 +117,7 @@ export default function PatientDashboard() {
       setDownloadingRecordId(recordId);
       
       const token = localStorage.getItem('access_token');
-      const apiUrl = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8000' : 'https://backend-production-386b.up.railway.app');
+      const apiUrl = API_URL;
       const response = await fetch(`${apiUrl}/records/${recordId}/download`, {
         method: 'GET',
         headers: {

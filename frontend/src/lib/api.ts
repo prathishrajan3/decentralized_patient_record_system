@@ -1,4 +1,8 @@
-export const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8000' : 'https://backend-production-386b.up.railway.app');
+let rawApiUrl = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8000' : 'https://backend-production-386b.up.railway.app');
+if (rawApiUrl && !rawApiUrl.startsWith('http://') && !rawApiUrl.startsWith('https://')) {
+  rawApiUrl = `https://${rawApiUrl}`;
+}
+export const API_URL = rawApiUrl.replace(/\/+$/, '');
 
 export async function fetchApi(endpoint: string, options: RequestInit = {}) {
   const token = localStorage.getItem('access_token');
@@ -20,13 +24,13 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
   });
 
   if (!response.ok) {
-    let errorMessage = 'An error occurred';
+    let errorMessage = `HTTP ${response.status}: ${response.statusText || 'Request failed'}`;
     try {
       const errorData = await response.json();
       if (Array.isArray(errorData.detail)) {
         errorMessage = errorData.detail.map((err: any) => err.msg).join(', ');
-      } else {
-        errorMessage = errorData.detail || errorData.message || errorMessage;
+      } else if (errorData.detail || errorData.message) {
+        errorMessage = errorData.detail || errorData.message;
       }
     } catch {
       // Ignore JSON parse errors

@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
-import { ShieldCheck, ShieldAlert, FileText, Download, Loader2, User, FileHeart, Bell, Upload, X, Shield } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
+import { ShieldCheck, ShieldAlert, FileText, Download, Loader2, User, FileHeart, Bell, Upload, X, Shield, Activity } from 'lucide-react';
 import { fetchApi, API_URL } from '../lib/api';
+import VitalsMonitorModal from '../components/VitalsMonitorModal';
 
 interface Record {
   id: number;
@@ -30,33 +31,35 @@ export default function PatientDashboard() {
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isVitalsModalOpen, setIsVitalsModalOpen] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadType, setUploadType] = useState('General Health Record');
   const [uploading, setUploading] = useState(false);
   const [downloadingRecordId, setDownloadingRecordId] = useState<number | null>(null);
   const [user, setUser] = useState<any>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const userData = await fetchApi('/users/me');
-        setUser(userData);
-        const [recordsData, consentsData, requestsData] = await Promise.all([
-          fetchApi('/records'),
-          fetchApi('/consent/active'),
-          fetchApi('/consent/requests/pending')
-        ]);
-        setRecords(recordsData);
-        setConsents(consentsData);
-        setPendingRequests(requestsData);
-      } catch (err) {
-        console.error("Failed to fetch dashboard data:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+  const fetchData = useCallback(async () => {
+    try {
+      const userData = await fetchApi('/users/me');
+      setUser(userData);
+      const [recordsData, consentsData, requestsData] = await Promise.all([
+        fetchApi('/records'),
+        fetchApi('/consent/active'),
+        fetchApi('/consent/requests/pending')
+      ]);
+      setRecords(recordsData);
+      setConsents(consentsData);
+      setPendingRequests(requestsData);
+    } catch (err) {
+      console.error("Failed to fetch dashboard data:", err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleRevoke = async (doctorId: number) => {
     try {
@@ -193,6 +196,12 @@ export default function PatientDashboard() {
             className="w-full sm:w-auto btn-secondary flex items-center justify-center gap-2 text-sm"
           >
             <Download className="w-4 h-4" /> Export History
+          </button>
+          <button 
+            onClick={() => setIsVitalsModalOpen(true)}
+            className="w-full sm:w-auto px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-lg shadow-sm flex items-center justify-center gap-2 text-sm transition-all"
+          >
+            <Activity className="w-4 h-4" /> Take Vitals
           </button>
           <button onClick={() => setIsUploadModalOpen(true)} className="w-full sm:w-auto btn-primary flex items-center justify-center gap-2 text-sm">
             <Upload className="w-4 h-4" /> Upload Record
@@ -402,6 +411,13 @@ export default function PatientDashboard() {
           </div>
         </div>
       )}
+
+      {/* Vitals Telemetry Monitor Modal */}
+      <VitalsMonitorModal
+        isOpen={isVitalsModalOpen}
+        onClose={() => setIsVitalsModalOpen(false)}
+        onVitalsRecorded={fetchData}
+      />
     </div>
   );
 }

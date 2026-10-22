@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Activity, Heart, Radio, Fingerprint, CheckCircle2, X, Loader2, ShieldCheck, Save } from 'lucide-react';
 import { fetchApi } from '../lib/api';
 
@@ -38,9 +38,6 @@ export default function VitalsMonitorModal({ isOpen, onClose, onVitalsRecorded }
 
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const wavePointsRef = useRef<number[]>([]);
-  const phaseRef = useRef<number>(0);
 
   // Poll telemetry every 800ms when modal is open
   useEffect(() => {
@@ -86,148 +83,6 @@ export default function VitalsMonitorModal({ isOpen, onClose, onVitalsRecorded }
   // Critical rule: Finger must be detected on sensor for any mode to display vitals
   const hasFinger = Boolean(telemetry.online && telemetry.finger_detected);
 
-  // ECG Waveform Canvas Rendering Loop
-  useEffect(() => {
-    if (!isOpen) return;
-
-    let animId: number;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Buffer of 280 points
-    const maxPoints = 280;
-    if (wavePointsRef.current.length === 0) {
-      wavePointsRef.current = new Array(maxPoints).fill(100);
-    }
-
-    const render = () => {
-      const width = canvas.width;
-      const height = canvas.height;
-      const centerY = height / 2;
-
-      // Clear dark background
-      ctx.fillStyle = '#060b13';
-      ctx.fillRect(0, 0, width, height);
-
-      // Draw ECG Medical Grid
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = '#0e1d2f';
-      const gridSize = 20;
-
-      ctx.beginPath();
-      for (let x = 0; x < width; x += gridSize) {
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, height);
-      }
-      for (let y = 0; y < height; y += gridSize) {
-        ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
-      }
-      ctx.stroke();
-
-      // Compute new sample point
-      let newPoint = centerY;
-
-      if (!hasFinger) {
-        // Finger NOT on sensor -> FLATTEN WAVE (resting baseline + subtle jitter)
-        newPoint = centerY + (Math.random() * 2 - 1);
-      } else {
-        // Finger IS on sensor -> Draw Lead-II ECG waveform
-        if (selectedMode === 'SPO2_ONLY') {
-          // Resting baseline with gentle pulse ripple
-          phaseRef.current = (phaseRef.current + 0.05) % (Math.PI * 2);
-          newPoint = centerY + Math.sin(phaseRef.current) * 6 + (Math.random() * 2 - 1);
-        } else {
-          // BOTH or ECG_ONLY: Generate authentic PQRST cardiac complex
-          const hr = telemetry.heart_rate > 40 && telemetry.heart_rate < 180 ? telemetry.heart_rate : 74;
-          const cycleSpeed = (hr / 60) * 0.04;
-          phaseRef.current = (phaseRef.current + cycleSpeed) % 1.0;
-          const p = phaseRef.current;
-
-          // Isoelectric baseline
-          let val = 0;
-          if (p >= 0.08 && p < 0.16) {
-            // P-Wave
-            const prog = (p - 0.08) / 0.08;
-            val = Math.sin(prog * Math.PI) * 14;
-          } else if (p >= 0.22 && p < 0.25) {
-            // Q-Wave
-            const prog = (p - 0.22) / 0.03;
-            val = -Math.sin(prog * Math.PI) * 10;
-          } else if (p >= 0.25 && p < 0.30) {
-            // R-Peak (Ventricular depolarization spike)
-            const prog = (p - 0.25) / 0.05;
-            val = Math.sin(prog * Math.PI) * 65;
-          } else if (p >= 0.30 && p < 0.34) {
-            // S-Wave
-            const prog = (p - 0.30) / 0.04;
-            val = -Math.sin(prog * Math.PI) * 22;
-          } else if (p >= 0.42 && p < 0.60) {
-            // T-Wave
-            const prog = (p - 0.42) / 0.18;
-            val = Math.sin(prog * Math.PI) * 22;
-          }
-
-          val += (Math.random() * 2 - 1);
-          newPoint = centerY - val;
-        }
-      }
-
-      wavePointsRef.current.push(newPoint);
-      if (wavePointsRef.current.length > maxPoints) {
-        wavePointsRef.current.shift();
-      }
-
-      // Draw the waveform trace
-      ctx.beginPath();
-      ctx.lineWidth = 2.2;
-      ctx.strokeStyle = hasFinger ? '#10b981' : '#f59e0b';
-      ctx.shadowBlur = hasFinger ? 8 : 4;
-      ctx.shadowColor = hasFinger ? '#10b981' : '#f59e0b';
-
-      const step = width / (maxPoints - 1);
-      for (let i = 0; i < wavePointsRef.current.length; i++) {
-        const x = i * step;
-        const y = wavePointsRef.current[i];
-        if (i === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
-      }
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-
-      // Draw cursor sweep indicator
-      const lastX = (wavePointsRef.current.length - 1) * step;
-      const lastY = wavePointsRef.current[wavePointsRef.current.length - 1];
-      ctx.beginPath();
-      ctx.arc(lastX, lastY, 3.5, 0, Math.PI * 2);
-      ctx.fillStyle = hasFinger ? '#34d399' : '#fbbf24';
-      ctx.fill();
-
-      // Flatline notification if finger lifted
-      if (!hasFinger) {
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
-        ctx.fillRect(width / 2 - 140, height / 2 - 16, 280, 32);
-        ctx.strokeStyle = '#334155';
-        ctx.strokeRect(width / 2 - 140, height / 2 - 16, 280, 32);
-
-        ctx.fillStyle = '#fbbf24';
-        ctx.font = '600 12px Inter, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('SENSOR STANDBY • PLACE FINGER TO STREAM', width / 2, height / 2 + 4);
-      }
-
-      animId = requestAnimationFrame(render);
-    };
-
-    animId = requestAnimationFrame(render);
-    return () => cancelAnimationFrame(animId);
-  }, [isOpen, hasFinger, selectedMode, telemetry.heart_rate]);
-
   // Save Vitals to Record
   const handleSaveVitals = async () => {
     if (!hasFinger) {
@@ -260,7 +115,7 @@ export default function VitalsMonitorModal({ isOpen, onClose, onVitalsRecorded }
 
   return (
     <div className="fixed inset-0 modal-overlay z-[70] flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden animate-in fade-in zoom-in duration-200 border border-slate-200 my-8">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200 border border-slate-200 my-8">
         
         {/* Modal Header */}
         <div className="p-6 border-b border-slate-100 flex items-center justify-between">
@@ -270,7 +125,7 @@ export default function VitalsMonitorModal({ isOpen, onClose, onVitalsRecorded }
             </div>
             <div>
               <h3 className="text-xl font-bold text-slate-800 tracking-tight">Vital Signs & Rhythm Monitor</h3>
-              <p className="text-xs text-slate-500 font-medium">Continuous Lead-II ECG and Pulse Oximetry Telemetry</p>
+              <p className="text-xs text-slate-500 font-medium">Real-Time Biometric Telemetry</p>
             </div>
           </div>
           
@@ -451,41 +306,10 @@ export default function VitalsMonitorModal({ isOpen, onClose, onVitalsRecorded }
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-3 font-medium">
-                {hasFinger ? 'Lead II • Continuous sampling' : 'Awaiting sensor contact'}
+                {hasFinger ? 'Continuous sampling' : 'Awaiting sensor contact'}
               </p>
             </div>
 
-          </div>
-
-          {/* Hospital ECG Oscilloscope Display */}
-          <div className="rounded-xl overflow-hidden border border-slate-800 bg-[#060b13] shadow-inner">
-            <div className="bg-[#0b1320] px-4 py-2 border-b border-slate-800 flex items-center justify-between text-[11px] font-mono">
-              <div className="flex items-center gap-3 text-emerald-400">
-                <span className="font-bold tracking-wider">LEAD II</span>
-                <span className="text-slate-500">•</span>
-                <span className="text-slate-400">25 mm/s</span>
-                <span className="text-slate-500">•</span>
-                <span className="text-slate-400">10 mm/mV</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-slate-400">MODE:</span>
-                <span className="text-emerald-400 font-bold">{selectedMode}</span>
-                <span className="text-slate-500">•</span>
-                <span className="text-slate-400">STATUS:</span>
-                <span className={hasFinger ? 'text-emerald-400 font-bold' : 'text-amber-400 font-bold'}>
-                  {hasFinger ? 'ACTIVE' : 'FLATLINE'}
-                </span>
-              </div>
-            </div>
-            
-            <div className="relative">
-              <canvas
-                ref={canvasRef}
-                width={700}
-                height={160}
-                className="w-full h-[160px] block"
-              />
-            </div>
           </div>
 
           {/* Success Banner */}
@@ -503,7 +327,7 @@ export default function VitalsMonitorModal({ isOpen, onClose, onVitalsRecorded }
           <div className="text-xs text-slate-500 font-mono">
             Device: <span className="font-semibold text-slate-700">{telemetry.device_id}</span>
             {telemetry.online && (
-              <span className="ml-2 text-emerald-600 font-semibold">• Live Stream 50Hz</span>
+              <span className="ml-2 text-emerald-600 font-semibold">• Active</span>
             )}
           </div>
 

@@ -99,7 +99,7 @@ class Observation(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     patient_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    doctor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    doctor_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     observation_type = Column(String, nullable=False) # e.g., Blood Pressure, Heart Rate
     value = Column(String, nullable=False)
     unit = Column(String, nullable=True)

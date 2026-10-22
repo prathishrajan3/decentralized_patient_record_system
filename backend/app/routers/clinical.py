@@ -3,10 +3,16 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
+import hashlib
+import uuid
 
 from ..database import get_db
-from ..models import User, RoleEnum, AuditLog, Consent, Prescription, Diagnosis, Observation
+from ..models import User, RoleEnum, AuditLog, Consent, Prescription, Diagnosis, Observation, MedicalRecord
 from ..services.auth import get_current_user
+from ..services.crypto import crypto_service
+from ..services.storage import storage_service
+from ..services.blockchain import blockchain_service
+from ..services.pdf_generator import generate_vitals_pdf
 
 router = APIRouter(prefix="/clinical", tags=["clinical"])
 
@@ -214,24 +220,87 @@ def save_vitals(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Saves a captured vitals session as an Observation.
+    Saves a captured vitals session as an encrypted PDF report in Supabase,
+    anchors its cryptographic hash onto the Ethereum blockchain, and records
+    structured clinical observations.
     """
-    obs_hr = Observation(
+    # 1. Generate Hospital-Grade Vitals Examination PDF
+    patient_display_name = getattr(current_user, "full_name", None) or current_user.email
+    pdf_bytes = generate_vitals_pdf(
+        patient_name=patient_display_name,
+        patient_email=current_user.email,
+        patient_id=current_user.id,
+        heart_rate=data.heart_rate,
+        spo2=data.spo2,
+        rhythm=data.rhythm or "Lead-II Normal Sinus Rhythm",
+        mode=data.mode or telemetry_state.get("target_mode", "BOTH"),
+        device_id=telemetry_state.get("device_id", "ESP32-VITALS-01")
+    )
+
+    # 2. Compute Original File SHA-256 Hash
+    original_hash = hashlib.sha256(pdf_bytes).hexdigest()
+
+    # 3. Encrypt PDF using AES-256-GCM
+    encrypted_bytes = crypto_service.encrypt(pdf_bytes)
+
+    # 4. Upload Encrypted PDF to Supabase Storage
+    unique_record_id = str(uuid.uuid4())
+    file_name = f"{current_user.id}/{unique_record_id}_vitals_report.pdf.enc"
+    storage_path = storage_service.upload_file(file_name, encrypted_bytes, "application/pdf")
+
+    # 5. Anchor SHA-256 Hash onto the Sepolia Blockchain
+    tx_hash = None
+    try:
+        tx_hash = blockchain_service.store_record_hash(unique_record_id, original_hash)
+    except Exception as e:
+        # If blockchain fails, clean up Supabase storage to avoid orphaned files
+        try:
+            storage_service.client.storage.from_(storage_service.bucket_name).remove([file_name])
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail=f"Blockchain verification failed: {str(e)}")
+
+    # 6. Save as Official Medical Record in Database
+    desc = f"Biometric Telemetry Report ({data.mode or 'BOTH'}) - Heart Rate: {data.heart_rate} bpm, SpO2: {data.spo2}%"
+    record = MedicalRecord(
         patient_id=current_user.id,
         doctor_id=None,
-        observation_type="Heart Rate",
-        value=str(data.heart_rate),
-        unit="bpm"
+        file_type="Biometric Vitals Report",
+        supabase_file_path=storage_path,
+        record_hash=original_hash,
+        blockchain_tx_hash=tx_hash,
+        description=desc
     )
-    obs_spo2 = Observation(
-        patient_id=current_user.id,
-        doctor_id=None,
-        observation_type="Oxygen Saturation",
-        value=str(data.spo2),
-        unit="%"
-    )
-    db.add(obs_hr)
-    db.add(obs_spo2)
-    db.add(AuditLog(user_id=current_user.id, action="RECORD_VITALS_TELEMETRY"))
+    db.add(record)
+
+    # 7. Also record structured Observations
+    try:
+        obs_hr = Observation(
+            patient_id=current_user.id,
+            doctor_id=None,
+            observation_type="Heart Rate",
+            value=str(data.heart_rate),
+            unit="bpm"
+        )
+        obs_spo2 = Observation(
+            patient_id=current_user.id,
+            doctor_id=None,
+            observation_type="Oxygen Saturation",
+            value=str(data.spo2),
+            unit="%"
+        )
+        db.add(obs_hr)
+        db.add(obs_spo2)
+    except Exception:
+        pass
+
+    # 8. Audit Log
+    db.add(AuditLog(user_id=current_user.id, action="RECORD_VITALS_PDF", resource_id=str(current_user.id)))
     db.commit()
-    return {"message": "Vitals successfully recorded to health records"}
+    db.refresh(record)
+
+    return {
+        "message": "Vitals successfully encrypted, stored in Supabase, and anchored to Ethereum blockchain",
+        "record_id": record.id,
+        "tx_hash": tx_hash
+    }

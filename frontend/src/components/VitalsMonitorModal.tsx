@@ -101,9 +101,9 @@ export default function VitalsMonitorModal({ isOpen, onClose, onVitalsRecorded }
           mode: selectedMode
         })
       });
-      setSaveSuccess("Vitals successfully saved to your clinical record!");
+      setSaveSuccess("Vitals report generated, encrypted in Supabase, and anchored to Ethereum Blockchain!");
       if (onVitalsRecorded) onVitalsRecorded();
-      setTimeout(() => setSaveSuccess(null), 4000);
+      setTimeout(() => setSaveSuccess(null), 5000);
     } catch (err: any) {
       alert("Failed to save vitals: " + err.message);
     } finally {

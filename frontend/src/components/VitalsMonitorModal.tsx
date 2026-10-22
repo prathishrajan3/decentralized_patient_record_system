@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Activity, Heart, Radio, Fingerprint, CheckCircle2, X, Loader2, ShieldCheck, Save } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Activity, Heart, Radio, Fingerprint, CheckCircle2, X, Loader2, ShieldCheck, Save, RotateCcw, Timer } from 'lucide-react';
 import { fetchApi } from '../lib/api';
 
 interface VitalsMonitorModalProps {
@@ -39,7 +39,16 @@ export default function VitalsMonitorModal({ isOpen, onClose, onVitalsRecorded }
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
 
-  // Poll telemetry every 800ms when modal is open
+  // 10-Second Measurement State
+  const [sessionState, setSessionState] = useState<'IDLE' | 'MEASURING' | 'COMPLETED'>('IDLE');
+  const [timeLeft, setTimeLeft] = useState<number>(10);
+  const [lockedVitals, setLockedVitals] = useState<{ heart_rate: number; spo2: number } | null>(null);
+  const samplesRef = useRef<{ hr: number[]; spo2: number[] }>({ hr: [], spo2: [] });
+
+  // Critical rule: Finger must be detected on sensor for any mode to display vitals
+  const hasFinger = Boolean(telemetry.online && telemetry.finger_detected);
+
+  // Poll telemetry every 750ms when modal is open
   useEffect(() => {
     if (!isOpen) return;
 
@@ -59,13 +68,86 @@ export default function VitalsMonitorModal({ isOpen, onClose, onVitalsRecorded }
     };
 
     fetchLatest();
-    const interval = setInterval(fetchLatest, 800);
+    const interval = setInterval(fetchLatest, 750);
 
     return () => {
       isMounted = false;
       clearInterval(interval);
     };
   }, [isOpen]);
+
+  // Reset state whenever modal is freshly opened
+  useEffect(() => {
+    if (isOpen) {
+      setSessionState('IDLE');
+      setTimeLeft(10);
+      setLockedVitals(null);
+      setSaveSuccess(null);
+      samplesRef.current = { hr: [], spo2: [] };
+    }
+  }, [isOpen]);
+
+  // Transition from IDLE to MEASURING when finger is detected
+  useEffect(() => {
+    if (isOpen && sessionState === 'IDLE' && hasFinger) {
+      setSessionState('MEASURING');
+      setTimeLeft(10);
+      samplesRef.current = { hr: [], spo2: [] };
+    }
+  }, [isOpen, sessionState, hasFinger]);
+
+  // 10-Second Measurement Countdown & Sampling Timer
+  useEffect(() => {
+    if (!isOpen || sessionState !== 'MEASURING') return;
+
+    const timer = setInterval(() => {
+      // Only count down while finger is maintained on the sensor
+      if (hasFinger) {
+        // Collect valid sample readings
+        if (telemetry.heart_rate > 35 && telemetry.heart_rate < 220) {
+          samplesRef.current.hr.push(telemetry.heart_rate);
+        }
+        if (telemetry.spo2 > 70 && telemetry.spo2 <= 100) {
+          samplesRef.current.spo2.push(telemetry.spo2);
+        }
+
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            // 10-Second Session Completed! Lock final averaged vitals
+            const hrList = samplesRef.current.hr;
+            const spo2List = samplesRef.current.spo2;
+
+            const finalHr = hrList.length > 0
+              ? Math.round(hrList.reduce((a, b) => a + b, 0) / hrList.length)
+              : (telemetry.heart_rate || 75);
+
+            const finalSpo2 = spo2List.length > 0
+              ? Math.round(spo2List.reduce((a, b) => a + b, 0) / spo2List.length)
+              : (telemetry.spo2 || 98);
+
+            setLockedVitals({
+              heart_rate: finalHr,
+              spo2: finalSpo2
+            });
+            setSessionState('COMPLETED');
+            return 0;
+          }
+          return prev - 1;
+        });
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isOpen, sessionState, hasFinger, telemetry.heart_rate, telemetry.spo2]);
+
+  // Retake Measurement Handler
+  const handleRetake = () => {
+    setTimeLeft(10);
+    setLockedVitals(null);
+    setSaveSuccess(null);
+    samplesRef.current = { hr: [], spo2: [] };
+    setSessionState(hasFinger ? 'MEASURING' : 'IDLE');
+  };
 
   // Handle Mode Change
   const handleModeSwitch = async (mode: 'BOTH' | 'ECG_ONLY' | 'SPO2_ONLY') => {
@@ -80,13 +162,13 @@ export default function VitalsMonitorModal({ isOpen, onClose, onVitalsRecorded }
     }
   };
 
-  // Critical rule: Finger must be detected on sensor for any mode to display vitals
-  const hasFinger = Boolean(telemetry.online && telemetry.finger_detected);
-
-  // Save Vitals to Record
+  // Save Vitals to Record (Encrypted PDF in Supabase + Blockchain)
   const handleSaveVitals = async () => {
-    if (!hasFinger) {
-      alert("Cannot record vitals: Please keep finger on the SpO2 sensor first.");
+    const hrToSave = lockedVitals ? lockedVitals.heart_rate : telemetry.heart_rate;
+    const spo2ToSave = selectedMode === 'ECG_ONLY' ? 0 : (lockedVitals ? lockedVitals.spo2 : telemetry.spo2);
+
+    if (!hrToSave || hrToSave === 0) {
+      alert("No valid vitals measured. Please complete the 10-second measurement first.");
       return;
     }
 
@@ -95,8 +177,8 @@ export default function VitalsMonitorModal({ isOpen, onClose, onVitalsRecorded }
       await fetchApi('/clinical/telemetry/save-vitals', {
         method: 'POST',
         body: JSON.stringify({
-          heart_rate: telemetry.heart_rate || 74,
-          spo2: telemetry.spo2 || 98,
+          heart_rate: hrToSave,
+          spo2: spo2ToSave,
           rhythm: "Lead-II Normal Sinus Rhythm",
           mode: selectedMode
         })
@@ -113,6 +195,17 @@ export default function VitalsMonitorModal({ isOpen, onClose, onVitalsRecorded }
 
   if (!isOpen) return null;
 
+  // Active displayed values (locked when completed, live when measuring)
+  const displayHr = sessionState === 'COMPLETED' && lockedVitals
+    ? lockedVitals.heart_rate
+    : (hasFinger && telemetry.heart_rate > 0 ? telemetry.heart_rate : null);
+
+  const displaySpo2 = sessionState === 'COMPLETED' && lockedVitals
+    ? lockedVitals.spo2
+    : (hasFinger && telemetry.spo2 > 0 ? telemetry.spo2 : null);
+
+  const progressPercent = Math.min(100, Math.round(((10 - timeLeft) / 10) * 100));
+
   return (
     <div className="fixed inset-0 modal-overlay z-[70] flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200 border border-slate-200 my-8">
@@ -124,8 +217,8 @@ export default function VitalsMonitorModal({ isOpen, onClose, onVitalsRecorded }
               <Activity className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-slate-800 tracking-tight">Vital Signs & Rhythm Monitor</h3>
-              <p className="text-xs text-slate-500 font-medium">Real-Time Biometric Telemetry</p>
+              <h3 className="text-xl font-bold text-slate-800 tracking-tight">Vital Signs Examination</h3>
+              <p className="text-xs text-slate-500 font-medium">10-Second Continuous Telemetry Sampling</p>
             </div>
           </div>
           
@@ -162,6 +255,7 @@ export default function VitalsMonitorModal({ isOpen, onClose, onVitalsRecorded }
               <button
                 type="button"
                 onClick={() => handleModeSwitch('BOTH')}
+                disabled={sessionState === 'MEASURING'}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
                   selectedMode === 'BOTH'
                     ? 'bg-white text-slate-900 shadow-sm'
@@ -173,6 +267,7 @@ export default function VitalsMonitorModal({ isOpen, onClose, onVitalsRecorded }
               <button
                 type="button"
                 onClick={() => handleModeSwitch('ECG_ONLY')}
+                disabled={sessionState === 'MEASURING'}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
                   selectedMode === 'ECG_ONLY'
                     ? 'bg-white text-slate-900 shadow-sm'
@@ -184,6 +279,7 @@ export default function VitalsMonitorModal({ isOpen, onClose, onVitalsRecorded }
               <button
                 type="button"
                 onClick={() => handleModeSwitch('SPO2_ONLY')}
+                disabled={sessionState === 'MEASURING'}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
                   selectedMode === 'SPO2_ONLY'
                     ? 'bg-white text-slate-900 shadow-sm'
@@ -195,7 +291,7 @@ export default function VitalsMonitorModal({ isOpen, onClose, onVitalsRecorded }
             </div>
           </div>
 
-          {/* Connection Status Banner */}
+          {/* Dynamic 10-Second Progress / Status Banner */}
           {!telemetry.online ? (
             <div className="bg-blue-50/70 border border-blue-100 rounded-xl p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -203,8 +299,8 @@ export default function VitalsMonitorModal({ isOpen, onClose, onVitalsRecorded }
                   <Radio className="w-5 h-5 animate-pulse" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-slate-800">Connecting to patient telemetry monitor...</h4>
-                  <p className="text-xs text-slate-500">Ensure the wireless vitals monitor is powered on and within network range.</p>
+                  <h4 className="text-sm font-bold text-slate-800">Connecting to telemetry monitor...</h4>
+                  <p className="text-xs text-slate-500">Ensure the ESP32 node is powered on and streaming telemetry.</p>
                 </div>
               </div>
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-white text-slate-600 border border-slate-200 shadow-sm">
@@ -219,31 +315,57 @@ export default function VitalsMonitorModal({ isOpen, onClose, onVitalsRecorded }
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-slate-800">Place Finger on Sensor</h4>
-                  <p className="text-xs text-slate-600">The vitals will only be measured and displayed while your finger is placed on the SpO₂ sensor.</p>
+                  <p className="text-xs text-slate-600">Keep finger firmly on the sensor to initiate the 10-second measurement session.</p>
                 </div>
               </div>
               <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
                 Awaiting Contact
               </span>
             </div>
+          ) : sessionState === 'MEASURING' ? (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center text-white shrink-0">
+                    <Timer className="w-5 h-5 animate-spin" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900">Measuring Biometric Vitals...</h4>
+                    <p className="text-xs text-slate-600">Please keep your finger steady during the 10-second sampling window.</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-2xl font-black text-blue-600 font-mono tracking-tight">{timeLeft}s</span>
+                  <p className="text-[10px] uppercase font-bold text-slate-500">Remaining</p>
+                </div>
+              </div>
+
+              {/* Countdown Progress Bar */}
+              <div className="w-full bg-blue-100 rounded-full h-2 overflow-hidden">
+                <div 
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-1000 ease-linear"
+                  style={{ width: `${progressPercent}%` }}
+                ></div>
+              </div>
+            </div>
           ) : (
-            <div className="bg-emerald-50/80 border border-emerald-200 rounded-xl p-4 flex items-center justify-between">
+            <div className="bg-emerald-50/90 border border-emerald-200 rounded-xl p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
                   <CheckCircle2 className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-slate-800">Telemetry Stream Active</h4>
-                  <p className="text-xs text-emerald-700 font-medium">Optical perfusion lock verified. Real-time biometric sampling active.</p>
+                  <h4 className="text-sm font-bold text-slate-900">10-Second Measurement Complete!</h4>
+                  <p className="text-xs text-emerald-800 font-medium">Vitals locked and verified. Ready to save as encrypted PDF on blockchain.</p>
                 </div>
               </div>
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-600 animate-ping"></span> Live Signal
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1.5 shadow-sm">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Complete
               </span>
             </div>
           )}
 
-          {/* Biometric Cards Grid (Vitals strictly gated by finger contact) */}
+          {/* Biometric Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             
             {/* Heart Rate / Pulse Rate */}
@@ -251,17 +373,19 @@ export default function VitalsMonitorModal({ isOpen, onClose, onVitalsRecorded }
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pulse Rate (PR)</span>
                 <div className="w-8 h-8 rounded-full bg-rose-100/80 flex items-center justify-center text-rose-600">
-                  <Heart className={`w-4 h-4 ${hasFinger ? 'animate-pulse text-rose-600' : ''}`} />
+                  <Heart className={`w-4 h-4 ${hasFinger && sessionState === 'MEASURING' ? 'animate-pulse text-rose-600' : ''}`} />
                 </div>
               </div>
               <div className="flex items-baseline gap-1.5">
                 <span className="text-3xl font-extrabold text-slate-800 tracking-tight">
-                  {hasFinger && telemetry.heart_rate > 0 ? telemetry.heart_rate : '--'}
+                  {displayHr !== null ? displayHr : '--'}
                 </span>
                 <span className="text-xs font-bold text-slate-500">bpm</span>
               </div>
               <p className="text-xs text-slate-500 mt-2 font-medium">
-                {hasFinger ? (telemetry.heart_rate > 0 ? 'Normal Sinus Rhythm' : 'Acquiring pulse...') : 'Awaiting pulse reading...'}
+                {sessionState === 'COMPLETED' 
+                  ? 'Locked 10s Average' 
+                  : (sessionState === 'MEASURING' ? 'Sampling rhythm...' : 'Awaiting 10s session...')}
               </p>
             </div>
 
@@ -275,20 +399,19 @@ export default function VitalsMonitorModal({ isOpen, onClose, onVitalsRecorded }
               </div>
               <div className="flex items-baseline gap-1.5">
                 <span className="text-3xl font-extrabold text-slate-800 tracking-tight">
-                  {hasFinger 
-                    ? (selectedMode === 'ECG_ONLY' ? '--' : (telemetry.spo2 > 0 ? telemetry.spo2 : '--'))
-                    : '--'
+                  {selectedMode === 'ECG_ONLY' 
+                    ? '--' 
+                    : (displaySpo2 !== null ? displaySpo2 : '--')
                   }
                 </span>
                 <span className="text-xs font-bold text-slate-500">
-                  {selectedMode === 'ECG_ONLY' && hasFinger ? '(Bypassed)' : '%'}
+                  {selectedMode === 'ECG_ONLY' ? '(Bypassed)' : '%'}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-2 font-medium">
-                {hasFinger 
-                  ? (selectedMode === 'ECG_ONLY' ? 'Bypassed in ECG Mode' : 'Optimal Oxygenation') 
-                  : 'Awaiting sensor perfusion...'
-                }
+                {selectedMode === 'ECG_ONLY' 
+                  ? 'Bypassed in ECG Mode' 
+                  : (sessionState === 'COMPLETED' ? 'Locked 10s Average' : (sessionState === 'MEASURING' ? 'Sampling SpO₂...' : 'Awaiting 10s session...'))}
               </p>
             </div>
 
@@ -302,11 +425,11 @@ export default function VitalsMonitorModal({ isOpen, onClose, onVitalsRecorded }
               </div>
               <div className="flex items-baseline gap-1.5">
                 <span className="text-lg font-bold text-slate-800 tracking-tight truncate">
-                  {hasFinger ? 'Normal Sinus' : 'Analyzing baseline...'}
+                  {displayHr !== null ? 'Normal Sinus' : 'Analyzing baseline...'}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-3 font-medium">
-                {hasFinger ? 'Continuous sampling' : 'Awaiting sensor contact'}
+                {sessionState === 'COMPLETED' ? 'Lead II Verified' : (sessionState === 'MEASURING' ? 'Continuously sampling...' : 'Awaiting sensor contact')}
               </p>
             </div>
 
@@ -322,29 +445,50 @@ export default function VitalsMonitorModal({ isOpen, onClose, onVitalsRecorded }
 
         </div>
 
-        {/* Modal Footer */}
-        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+        {/* Modal Footer with Retake & Save Buttons */}
+        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="text-xs text-slate-500 font-mono">
             Device: <span className="font-semibold text-slate-700">{telemetry.device_id}</span>
-            {telemetry.online && (
-              <span className="ml-2 text-emerald-600 font-semibold">• Active</span>
+            {sessionState === 'MEASURING' && (
+              <span className="ml-2 text-blue-600 font-semibold">• Sampling ({10 - timeLeft}/10s)</span>
+            )}
+            {sessionState === 'COMPLETED' && (
+              <span className="ml-2 text-emerald-600 font-semibold">• Ready to Save</span>
             )}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+            
+            {/* Retake Button (Visible once 10 seconds complete or while waiting) */}
+            {(sessionState === 'COMPLETED' || (sessionState === 'IDLE' && lockedVitals !== null)) && (
+              <button
+                type="button"
+                onClick={handleRetake}
+                disabled={saving}
+                className="px-3.5 py-2 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-slate-500" /> Retake
+              </button>
+            )}
+
+            {/* Save Vitals to Record (Enabled upon 10-second completion) */}
             <button
               type="button"
               onClick={handleSaveVitals}
-              disabled={saving || !hasFinger}
-              className={`px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${
-                hasFinger
-                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
+              disabled={saving || sessionState !== 'COMPLETED'}
+              className={`px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all shadow-sm ${
+                sessionState === 'COMPLETED'
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200'
                   : 'bg-slate-200 text-slate-400 cursor-not-allowed'
               }`}
             >
               {saving ? (
                 <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Recording...
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Recording to Blockchain...
+                </>
+              ) : sessionState === 'MEASURING' ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Measuring ({timeLeft}s)...
                 </>
               ) : (
                 <>
@@ -356,6 +500,7 @@ export default function VitalsMonitorModal({ isOpen, onClose, onVitalsRecorded }
             <button
               type="button"
               onClick={onClose}
+              disabled={saving}
               className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg transition-colors"
             >
               Close

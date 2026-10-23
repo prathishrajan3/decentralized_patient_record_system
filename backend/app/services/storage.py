@@ -1,14 +1,16 @@
 import os
+from dotenv import load_dotenv
 from supabase import create_client, Client
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_SECRET_KEY")
+load_dotenv()
 
 class StorageService:
     def __init__(self):
-        if not SUPABASE_URL or not SUPABASE_KEY:
+        url = os.getenv("SUPABASE_URL")
+        key = os.getenv("SUPABASE_SECRET_KEY")
+        if not url or not key:
             raise ValueError("Supabase credentials not fully configured.")
-        self.client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        self.client: Client = create_client(url, key)
         self.bucket_name = "medical-documents"
         
         # Ensure bucket exists

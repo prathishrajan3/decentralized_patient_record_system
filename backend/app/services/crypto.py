@@ -1,17 +1,18 @@
 import os
 import base64
+from dotenv import load_dotenv
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-# Expects a 32-byte base64 encoded string from environment variables
-ENCRYPTION_KEY_B64 = os.getenv("ENCRYPTION_KEY")
+load_dotenv()
 
 class CryptoService:
     def __init__(self):
-        if not ENCRYPTION_KEY_B64:
+        key_b64 = os.getenv("ENCRYPTION_KEY")
+        if not key_b64:
             raise ValueError("ENCRYPTION_KEY environment variable is not set")
         
         # Decode the key
-        self.key = base64.b64decode(ENCRYPTION_KEY_B64)
+        self.key = base64.b64decode(key_b64)
         if len(self.key) != 32:
             raise ValueError("ENCRYPTION_KEY must be a 32-byte key (AES-256)")
         
